@@ -1,0 +1,45 @@
+# tile_vent — floor cooling vent with a fan. Same edges as tile_floor. Round
+# S/b housing, S blades over an N well, faint c glow at the hub / behind the
+# blades. Blades rotate 45 degrees between frames.
+name: tile_vent
+size: 16x16
+palette: bitrouge-20
+anim: spin 0,1 fps=6 loop
+
+# 0: blades in a + cross
+frame 0
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnSSSSSnnnnN
+BnnnnSbNNNbSnnnN
+BnnnSbNNSNNbSnnN
+BnnnSNNNSNNNbnnN
+BnnSbNNNSNNNbBnN
+BnnSNSSScSSSNBnN
+BnnSbNNNSNNNbBnN
+BnnnSNNNSNNNbnnN
+BnnnSbNNSNNbBnnN
+BnnnnSbNNNbBnnnN
+BnnnnnBBBBBnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 1: blades in an x cross
+frame 1
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnSSSSSnnnnN
+BnnnnSbNNNbSnnnN
+BnnnSbSNNNSbSnnN
+BnnnSNNSNSNNbnnN
+BnnSbNNNSNNNbBnN
+BnnSNNNScSNNNBnN
+BnnSbNNNSNNNbBnN
+BnnnSNNSNSNNbnnN
+BnnnSbSNNNSbBnnN
+BnnnnSbNNNbBnnnN
+BnnnnnBBBBBnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN

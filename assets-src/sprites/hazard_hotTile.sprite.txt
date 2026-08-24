@@ -1,0 +1,64 @@
+# hazard_hotTile — floor grate glowing with heat. Same seamless edges as
+# tile_floor (B top/left, N bottom/right). Grate slats are B, gaps glow A,
+# and `a` shimmer pixels rise one row per frame.
+name: hazard_hotTile
+size: 16x16
+palette: bitrouge-20
+anim: shimmer 0,1,2 fps=5 loop
+
+# 0: shimmer low
+frame 0
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnannnnnnnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAAaAAAnnN
+BnnBBBBBBBBBBnnN
+BnnAaAAAAAAAAnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAaAAAAnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAAAAaAnnN
+BnnBBBBBBBBBBnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 1: shimmer mid, wisps rising above grate
+frame 1
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnannnnnnnnN
+BnnnnnnnnnannnnN
+BnnBBBBBBBBBBnnN
+BnnAaAAAAAAAAnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAaAAAAnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAAAAaAnnN
+BnnBBBBBBBBBBnnN
+BnnAAaAAAAAAAnnN
+BnnBBBBBBBBBBnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 2: shimmer high
+frame 2
+BBBBBBBBBBBBBBBN
+BnnnnnannnnnnnnN
+BnnnnnnnnnannnnN
+BnnnnnnnnnnnnnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAaAAAAnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAAAAaAnnN
+BnnBBBBBBBBBBnnN
+BnnAAaAAAAAAAnnN
+BnnBBBBBBBBBBnnN
+BnnAAAAAAaAAAnnN
+BnnBBBBBBBBBBnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN

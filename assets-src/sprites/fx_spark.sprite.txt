@@ -1,0 +1,10 @@
+# fx_spark — 4x4 cyan spark particle. Spawn several, drift, fade.
+name: fx_spark
+size: 4x4
+palette: bitrouge-20
+
+frame 0
+_cc_
+cwwc
+cwwc
+_cc_

@@ -1,0 +1,7 @@
+name: missing-frame
+size: 2x1
+palette: bitrouge-20
+frame 0
+KK
+frame 2
+KK

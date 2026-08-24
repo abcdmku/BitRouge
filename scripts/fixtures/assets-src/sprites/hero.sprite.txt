@@ -1,0 +1,222 @@
+# hero — the player's "bit" process. Chunky cyan head-unit with a dark visor,
+# a green status LED on the chest, stubby legs. Faces RIGHT; engine flips.
+# Light from top-left: `c` highlights on top/left edges, `B` shadow on the right.
+# Body is `S`/`b` metal so it stays visible on the `N` background.
+name: hero
+size: 16x16
+palette: bitrouge-20
+anim: idle 0,1,2,3 fps=4 loop
+anim: walk 4,5,6,7 fps=8 loop
+anim: death 8,9,10 fps=6
+
+# --- idle ------------------------------------------------------------------
+# 0: base pose
+frame 0
+________________
+_______KK_______
+______KcK_______
+______KCK_______
+____KKKCKKK_____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNwNNwK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbgbbbK____
+____KbK_KbK_____
+____KKK_KKK_____
+________________
+
+# 1: antenna glows, LED off
+frame 1
+________________
+_______KK_______
+______KwK_______
+______KcK_______
+____KKKCKKK_____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNwNNwK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbGbbbK____
+____KbK_KbK_____
+____KKK_KKK_____
+________________
+
+# 2: bob down one pixel (legs compress), blink
+frame 2
+________________
+________________
+_______KK_______
+______KcK_______
+______KCK_______
+____KKKCKKK_____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNNNNNK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbgbbbK____
+____KKK_KKK_____
+________________
+
+# 3: back up, eyes open, antenna dim
+frame 3
+________________
+_______KK_______
+______KCK_______
+______KCK_______
+____KKKCKKK_____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNwNNwK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbgbbbK____
+____KbK_KbK_____
+____KKK_KKK_____
+________________
+
+# --- walk (right) ----------------------------------------------------------
+# 4: front leg forward
+frame 4
+________________
+_______KK_______
+______KcK_______
+______KCK_______
+____KKKCKKK_____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNwNNwK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbgbbbK____
+___KbK___KbK____
+___KKK___KKK____
+________________
+
+# 5: legs together, bob up (head tilts forward)
+frame 5
+________________
+________KK______
+_______KcK______
+_______KCK______
+____KKKKCKKK____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNwNNwK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbgbbbK____
+_____KbKbK______
+_____KKKKK______
+________________
+
+# 6: back leg forward
+frame 6
+________________
+_______KK_______
+______KcK_______
+______KCK_______
+____KKKCKKK_____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNwNNwK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbgbbbK____
+_____KbK_KbK____
+_____KKK_KKK____
+________________
+
+# 7: legs together, bob down
+frame 7
+________________
+________________
+_______KK_______
+______KcK_______
+______KCK_______
+____KKKCKKK_____
+___KccCCCCBK____
+___KcCCCCCBK____
+___KCKKKKKKK____
+___KCKNwNNwK____
+___KCCCCCCBK____
+____KKKKKKK_____
+___KSbbbbbbK____
+___KSbbgbbbK____
+_____KKKKK______
+________________
+
+# --- death -----------------------------------------------------------------
+# 8: glitch — rows tear sideways, corruption pixels, LED red
+frame 8
+________________
+_______KK_______
+______KmK_______
+_______KCK______
+_____KKKCKKK____
+___KMcCCCCBK____
+__KcCCCCCBK_____
+___KCKKKKKKK____
+____KCKNRNNRK___
+___KCCPCCCBK____
+____KKKKKKK_____
+__KSbbbbbbK_____
+___KSbbRbbbK____
+____KbK__KbK____
+____KKK__KKK____
+________________
+
+# 9: collapse into a flat block, visor dark
+frame 9
+________________
+________________
+________________
+________________
+________________
+________________
+________________
+_____KKKKKKK____
+____KKMCCCPKK___
+___KCCKKKKKCCK__
+___KbbCCCCCbbK__
+___KKbbbbbbbKK__
+____KKKKKKKKK___
+________________
+________________
+________________
+
+# 10: scattered bits fading out
+frame 10
+________________
+________________
+________________
+________________
+______m_________
+___________P____
+_________B______
+____C_______m___
+_______KK_______
+___P__KbbK__C___
+_______KK_______
+______B_____P___
+___m_______B____
+________________
+________________
+________________

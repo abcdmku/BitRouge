@@ -1,0 +1,64 @@
+# hazard_overloadPlate — raised pressure plate (S highlight top/left, b fill,
+# B shadow bottom/right) with a red R core and R/r power arcs crackling
+# around the rim. Arcs jump position each frame.
+name: hazard_overloadPlate
+size: 16x16
+palette: bitrouge-20
+anim: arc 0,1,2 fps=8 loop
+
+# 0: arcs top-left and bottom-right
+frame 0
+BBBBBBBBBBBBBBBN
+BnnnnnrnnnnnnnnN
+BnnnnRnnnnnnnnnN
+BnnnSSSSSSSSSnnN
+BnnrSbbbbbbbBnnN
+BnnnSbbbbbbbBnnN
+BnnnSbbbRRbbBnnN
+BnnnSbbbRRbbBnrN
+BnnnSbbbbbbbBRnN
+BnnnSbbbbbbbBnnN
+BnnnSbbbbbbbBnnN
+BnnnBBBBBBBBBnnN
+BnnnnnnnnnRrnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 1: arcs top-right and left
+frame 1
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnRrnnN
+BnnnSSSSSSSSSnnN
+BnnnSbbbbbbbBRnN
+BnnnSbbbbbbbBnnN
+BnnnSbbbRRbbBnnN
+BnrRSbbbRRbbBnnN
+BnnnSbbbbbbbBnnN
+BnnrSbbbbbbbBnnN
+BnnnSbbbbbbbBnnN
+BnnnBBBBBBBBBnnN
+BnnnnRnnnnnnnnnN
+BnnnnnrnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 2: arcs all corners, core flares r
+frame 2
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnRnnnnnnnnnRnN
+BnnrSSSSSSSSSrnN
+BnnnSbbbbbbbBnnN
+BnnnSbbbbbbbBnnN
+BnnnSbbbrrbbBnnN
+BnnnSbbbrRbbBnnN
+BnnnSbbbbbbbBnnN
+BnnnSbbbbbbbBnnN
+BnnnSbbbbbbbBnnN
+BnnrBBBBBBBBBrnN
+BnnRnnnnnnnnnRnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN

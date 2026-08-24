@@ -1,0 +1,6 @@
+name: anim-range
+size: 2x1
+palette: bitrouge-20
+anim: idle 0,1 fps=4 loop
+frame 0
+KK

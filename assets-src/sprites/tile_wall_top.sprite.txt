@@ -1,0 +1,25 @@
+# tile_wall_top — cap for the top edge of a rack wall (the cable tray / ceiling
+# strip above the racks). S highlight along the top, b second row, then dark
+# N with B cross-ties, K bottom row to meet the rack's K border. Tiles
+# horizontally: rows are uniform except the B ties which repeat every 8px.
+name: tile_wall_top
+size: 16x16
+palette: bitrouge-20
+
+frame 0
+SSSSSSSSSSSSSSSS
+bbbbbbbbbbbbbbbb
+BBBBBBBBBBBBBBBB
+NNNNNNNNNNNNNNNN
+NNNBNNNNNNNBNNNN
+NNNBNNNNNNNBNNNN
+NNNBNNNNNNNBNNNN
+NBBBBBBBNBBBBBBB
+NNNBNNNNNNNBNNNN
+NNNBNNNNNNNBNNNN
+NNNBNNNNNNNBNNNN
+NNNBNNNNNNNBNNNN
+NNNNNNNNNNNNNNNN
+BBBBBBBBBBBBBBBB
+BBBBBBBBBBBBBBBB
+KKKKKKKKKKKKKKKK

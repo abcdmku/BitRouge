@@ -1,0 +1,63 @@
+# tile_floor — raised server-room floor tiles. Seamless: every frame shares the
+# same edges (B light edge on top/left, N shadow on bottom/right). Low contrast
+# on purpose so characters pop. Frames 0-2 are variants, not an animation.
+name: tile_floor
+size: 16x16
+palette: bitrouge-20
+
+# 0: plain panel
+frame 0
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 1: vent grille in the centre
+frame 1
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnNNNNNNnnnnN
+BnnnnNBNBNBnnnnN
+BnnnnNNNNNNnnnnN
+BnnnnNBNBNBnnnnN
+BnnnnNNNNNNnnnnN
+BnnnnNBNBNBnnnnN
+BnnnnNNNNNNnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 2: scuffed panel with two screw heads
+frame 2
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnBnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnNnnN
+BnnnnnnnnnnNnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnNnnnnnnnnnN
+BnnnnnNnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnBnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN

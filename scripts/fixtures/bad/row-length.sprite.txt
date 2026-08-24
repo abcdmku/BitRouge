@@ -1,0 +1,6 @@
+name: row-length
+size: 4x2
+palette: bitrouge-20
+frame 0
+KKKK
+KKK

@@ -1,0 +1,82 @@
+# port_down — floor data port, the "stairs down". Metal bezel around a dark
+# socket with a pulsing cyan ring and core. Drawn on top of a floor tile.
+name: port_down
+size: 16x16
+palette: bitrouge-20
+anim: pulse 0,1,2,3 fps=4 loop
+
+# 0: ring C, core c
+frame 0
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNCCCCCCNKbK_
+_KsKNCNNNNCNKbK_
+_KsKNCNccNCNKbK_
+_KsKNCNccNCNKbK_
+_KsKNCNNNNCNKbK_
+_KsKNCCCCCCNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 1: peak — ring c, core w
+frame 1
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNccccccNKbK_
+_KsKNcNNNNcNKbK_
+_KsKNcNwwNcNKbK_
+_KsKNcNwwNcNKbK_
+_KsKNcNNNNcNKbK_
+_KsKNccccccNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 2: ring C, core c (falling)
+frame 2
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNCCCCCCNKbK_
+_KsKNCNNNNCNKbK_
+_KsKNCNccNCNKbK_
+_KsKNCNccNCNKbK_
+_KsKNCNNNNCNKbK_
+_KsKNCCCCCCNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 3: dim — ring B, core C
+frame 3
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNBNNNNBNKbK_
+_KsKNBNCCNBNKbK_
+_KsKNBNCCNBNKbK_
+_KsKNBNNNNBNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________

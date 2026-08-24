@@ -1,0 +1,38 @@
+{
+  "name": "bitrouge-20",
+  "transparent": "_",
+  "colors": {
+    "K": "#07080f",
+    "N": "#0d1224",
+    "n": "#161d38",
+    "B": "#233052",
+    "b": "#3b4a78",
+    "S": "#5a6b94",
+    "s": "#8a9bbd",
+    "W": "#d8e1f2",
+    "w": "#ffffff",
+    "C": "#0fbfd8",
+    "c": "#6ff2ff",
+    "G": "#22c55e",
+    "g": "#8cff9a",
+    "A": "#f59e0b",
+    "a": "#ffd166",
+    "R": "#e0304b",
+    "r": "#ff7a8a",
+    "M": "#c026d3",
+    "m": "#ff6bf1",
+    "P": "#7c3aed"
+  },
+  "roles": {
+    "outline": "K",
+    "bg": "N",
+    "floor": "n",
+    "metal": "S",
+    "data": "C",
+    "ok": "G",
+    "warn": "A",
+    "danger": "R",
+    "corrupt": "M",
+    "text": "W"
+  }
+}

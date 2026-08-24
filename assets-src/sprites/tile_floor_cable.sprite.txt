@@ -1,0 +1,45 @@
+# tile_floor_cable — floor panel with a recessed cable channel. Edges match
+# tile_floor exactly (B top/left, N bottom/right) so it tiles with plain floor.
+# Channel: N groove edge, b cable, B shadow; one C pixel = data flowing.
+# Frame 0 horizontal, frame 1 vertical. Variants, not an animation.
+name: tile_floor_cable
+size: 16x16
+palette: bitrouge-20
+
+# 0: horizontal channel
+frame 0
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BNNNNNNNNNNNNNNN
+BbbbbbCbbbbbbbbN
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 1: vertical channel
+frame 1
+BBBBBBBBBBBBBBBN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNCBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+BnnnnnNbBnnnnnnN
+NNNNNNNNNNNNNNNN

@@ -1,0 +1,45 @@
+# hazard_corruptedSector — floor panel eaten by magenta corruption. Jagged K
+# hole in the middle rimmed with M, m sparkle and P speckle spreading out.
+# Frame 1 shifts the speckles and the hole's edge for a glitch flicker.
+name: hazard_corruptedSector
+size: 16x16
+palette: bitrouge-20
+anim: glitch 0,1 fps=4 loop
+
+# 0
+frame 0
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnPnnnnN
+BnnPnnnnnMmnnnnN
+BnnnnnMMnnPnnnPN
+BnnnnMKKMnnnnnnN
+BnnnMKKKKMPnnnnN
+BnnPMKKKKKKMnnnN
+BnnnnMKKKKKMmnnN
+BnnnnPMKKKKKMnnN
+BnnnnnnMKKKPnnnN
+BnnnnnPmMKMnnnnN
+BnnnnnnnnPnnnMnN
+BnnMnnnnnnnnnnnN
+BnnnnnnnnPnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+# 1: glitched
+frame 1
+BBBBBBBBBBBBBBBN
+BnnnnPnnnnnnnnnN
+BnnnnnnnmMnnPnnN
+BnnnnnMMMnnnnnnN
+BnnPnMKKKMPnnnnN
+BnnnMKKKKKMnnnnN
+BnnnMKKKKKKMPnnN
+BnnnnMKKKKKKMnnN
+BnnnnnMKKKKMmnnN
+BnnnnPMKKKMnnnnN
+BnnnnnnMKMPnnnnN
+BnnnnnnnMnnnnnnN
+BnnnnnnnnnnMnnnN
+BnnnPnnnnnnnnnnN
+BnnnnnnnnnnnPnnN
+NNNNNNNNNNNNNNNN

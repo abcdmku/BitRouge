@@ -1,0 +1,45 @@
+# tile_door — bulkhead door set in the rack wall. Full K border like
+# tile_wall_rack so it sits in the same wall run. Frame 0 closed: two b leaves
+# with S top/left bevels meeting at an N seam, G indicator LED above.
+# Frame 1 open: S frame around a dark N opening.
+name: tile_door
+size: 16x16
+palette: bitrouge-20
+
+# 0: closed
+frame 0
+KKKKKKKKKKKKKKKK
+KsssssssssssssSK
+KsBBBBBBBBBBBBSK
+KsBSSSSSNSSSSSSK
+KsBSbbbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KsBSbGbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KsBSbbbbNbbbbbSK
+KSSSSSSSSSSSSSSK
+KKKKKKKKKKKKKKKK
+
+# 1: open
+frame 1
+KKKKKKKKKKKKKKKK
+KsssssssssssssSK
+KsBBBBBBBBBBBBSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KsBSNNNNNNNNNNSK
+KSSSSSSSSSSSSSSK
+KKKKKKKKKKKKKKKK

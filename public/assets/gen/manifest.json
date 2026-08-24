@@ -1,0 +1,295 @@
+{
+  "sprites": {
+    "fx_bolt": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "fly": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 12,
+          "loop": true
+        }
+      }
+    },
+    "fx_hit": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 3,
+      "anims": {
+        "burst": {
+          "frames": [
+            0,
+            1,
+            2
+          ],
+          "fps": 12,
+          "loop": false
+        }
+      }
+    },
+    "fx_spark": {
+      "size": {
+        "w": 4,
+        "h": 4
+      },
+      "frames": 1,
+      "anims": {}
+    },
+    "hazard_brownout": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "flicker": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 3,
+          "loop": true
+        }
+      }
+    },
+    "hazard_corruptedSector": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "glitch": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 4,
+          "loop": true
+        }
+      }
+    },
+    "hazard_hotTile": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 3,
+      "anims": {
+        "shimmer": {
+          "frames": [
+            0,
+            1,
+            2
+          ],
+          "fps": 5,
+          "loop": true
+        }
+      }
+    },
+    "hazard_overloadPlate": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 3,
+      "anims": {
+        "arc": {
+          "frames": [
+            0,
+            1,
+            2
+          ],
+          "fps": 8,
+          "loop": true
+        }
+      }
+    },
+    "hero": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 11,
+      "anims": {
+        "idle": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 4,
+          "loop": true
+        },
+        "walk": {
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 8,
+          "loop": true
+        },
+        "death": {
+          "frames": [
+            8,
+            9,
+            10
+          ],
+          "fps": 6,
+          "loop": false
+        }
+      }
+    },
+    "port_down": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 4,
+      "anims": {
+        "pulse": {
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "fps": 4,
+          "loop": true
+        }
+      }
+    },
+    "tile_corrupt": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 3,
+      "anims": {
+        "glitch": {
+          "frames": [
+            0,
+            1,
+            2
+          ],
+          "fps": 5,
+          "loop": true
+        }
+      }
+    },
+    "tile_door": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {}
+    },
+    "tile_floor": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 3,
+      "anims": {}
+    },
+    "tile_floor_cable": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {}
+    },
+    "tile_vent": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "spin": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 6,
+          "loop": true
+        }
+      }
+    },
+    "tile_wall_rack": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "blink": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 2,
+          "loop": true
+        }
+      }
+    },
+    "tile_wall_top": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 1,
+      "anims": {}
+    }
+  },
+  "palette": {
+    "name": "bitrouge-20",
+    "colors": {
+      "K": "#07080f",
+      "N": "#0d1224",
+      "n": "#161d38",
+      "B": "#233052",
+      "b": "#3b4a78",
+      "S": "#5a6b94",
+      "s": "#8a9bbd",
+      "W": "#d8e1f2",
+      "w": "#ffffff",
+      "C": "#0fbfd8",
+      "c": "#6ff2ff",
+      "G": "#22c55e",
+      "g": "#8cff9a",
+      "A": "#f59e0b",
+      "a": "#ffd166",
+      "R": "#e0304b",
+      "r": "#ff7a8a",
+      "M": "#c026d3",
+      "m": "#ff6bf1",
+      "P": "#7c3aed"
+    },
+    "roles": {
+      "outline": "K",
+      "bg": "N",
+      "floor": "n",
+      "metal": "S",
+      "data": "C",
+      "ok": "G",
+      "warn": "A",
+      "danger": "R",
+      "corrupt": "M",
+      "text": "W"
+    }
+  }
+}

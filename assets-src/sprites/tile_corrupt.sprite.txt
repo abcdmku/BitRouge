@@ -1,0 +1,60 @@
+# tile_corrupt — glitched floor panel. Same edges as tile_floor. Corruption
+# blocks (M fill, m highlight top-left, P shadow) jump position each frame.
+name: tile_corrupt
+size: 16x16
+palette: bitrouge-20
+anim: glitch 0,1,2 fps=5 loop
+
+frame 0
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnmMnnnnnnnnnnN
+BnnMPnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnmMMnnN
+BnnnnnnnnnMPPnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnmMnnnnnnnnN
+BnnnnMPnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+frame 1
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnmMnnnnnnN
+BnnnnnnMPnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnmMMnnnnnnnnnnN
+BnMPPnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnmMnnN
+BnnnnnnnnnnMPnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN
+
+frame 2
+BBBBBBBBBBBBBBBN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnmMnnN
+BnnnnnnnnnnMPnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnmMnnnnnnnnnN
+BnnnMPnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnmMMnnnN
+BnnnnnnnnMPPnnnN
+BnnnnnnnnnnnnnnN
+BnnnnnnnnnnnnnnN
+NNNNNNNNNNNNNNNN

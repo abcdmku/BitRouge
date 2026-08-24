@@ -1,0 +1,45 @@
+# tile_wall_rack — server rack front used as a wall. Full K border so racks
+# read as discrete units when tiled. Four 2U slots with dark faceplates.
+# Frame 0 blank, frame 1 LED-lit (green/cyan/amber/one red).
+name: tile_wall_rack
+size: 16x16
+palette: bitrouge-20
+anim: blink 0,1 fps=2 loop
+
+# 0: blank rack
+frame 0
+KKKKKKKKKKKKKKKK
+KsssssssssssssSK
+KsBBBBBBBBBBBBSK
+KsBNNNNNNNNNNBSK
+KsBNbbbbbbbbNBSK
+KsBBBBBBBBBBBBSK
+KsBNNNNNNNNNNBSK
+KsBNbbbbbbbbNBSK
+KsBBBBBBBBBBBBSK
+KsBNNNNNNNNNNBSK
+KsBNbbbbbbbbNBSK
+KsBBBBBBBBBBBBSK
+KsBNNNNNNNNNNBSK
+KsBNbbbbbbbbNBSK
+KSSSSSSSSSSSSSSK
+KKKKKKKKKKKKKKKK
+
+# 1: LEDs on
+frame 1
+KKKKKKKKKKKKKKKK
+KsssssssssssssSK
+KsBBBBBBBBBBBBSK
+KsBNgNgNNNNCNBSK
+KsBNbbbbbbbbNBSK
+KsBBBBBBBBBBBBSK
+KsBNgNNNNNaNNBSK
+KsBNbbbbbbbbNBSK
+KsBBBBBBBBBBBBSK
+KsBNgNgNCNNNNBSK
+KsBNbbbbbbbbNBSK
+KsBBBBBBBBBBBBSK
+KsBNRNNNNNgNNBSK
+KsBNbbbbbbbbNBSK
+KSSSSSSSSSSSSSSK
+KKKKKKKKKKKKKKKK

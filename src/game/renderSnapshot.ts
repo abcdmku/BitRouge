@@ -111,3 +111,107 @@ export type RenderCommand =
   | { type: "useItem"; slot: number }
   | { type: "descend" }
   | { type: "heroPathTo"; x: number; y: number };
+
+// ---------------------------------------------------------------------------
+// Implementation (additive; the types above are the committed contract).
+// ---------------------------------------------------------------------------
+import type { GameState, RunState } from "./types";
+import { getRunMsPerTurn } from "./advance";
+
+const heroAnimFor = (run: RunState): EntityAnim => {
+  if (run.status === "dead") return "dead";
+  let anim: EntityAnim = "idle";
+  for (const event of run.events) {
+    if (event.turn !== run.turn) continue;
+    switch (event.kind) {
+      case "heroMoved":
+        anim = "walk";
+        break;
+      case "heroAttacked":
+        anim = "attack";
+        break;
+      case "heroHurt":
+        anim = "hurt";
+        break;
+      case "heroDied":
+        anim = "dead";
+        break;
+      case "heroRevived":
+        anim = "idle";
+        break;
+      default:
+        break;
+    }
+  }
+  return anim;
+};
+
+const enemyAnimsFor = (run: RunState): Map<number, EntityAnim> => {
+  const anims = new Map<number, EntityAnim>();
+  for (const event of run.events) {
+    if (event.turn !== run.turn) continue;
+    switch (event.kind) {
+      case "enemyMoved":
+        anims.set(event.id, "walk");
+        break;
+      case "enemyHurt":
+        anims.set(event.id, "hurt");
+        break;
+      case "enemyDied":
+        anims.set(event.id, "dead");
+        break;
+      case "enemySpawned":
+        anims.set(event.id, "idle");
+        break;
+      case "heroHurt":
+        if (event.sourceId !== null) anims.set(event.sourceId, "attack");
+        break;
+      default:
+        break;
+    }
+  }
+  return anims;
+};
+
+export const deriveRenderSnapshot = (state: GameState): RenderSnapshot | null => {
+  const run = state.run;
+  if (!run) return null;
+  const msPerTurn = getRunMsPerTurn(state, run);
+  const enemyAnims = enemyAnimsFor(run);
+  return {
+    runId: run.seed,
+    depth: run.depth,
+    width: run.floor.width,
+    height: run.floor.height,
+    tiles: run.floor.tiles,
+    explored: run.floor.explored,
+    visible: run.floor.visible,
+    hazards: run.floor.hazards,
+    hero: {
+      x: run.hero.x,
+      y: run.hero.y,
+      facing: run.hero.facing,
+      hp: run.hero.hp,
+      maxHp: run.hero.maxHp,
+      heat: run.hero.heat,
+      throttled: run.hero.throttled,
+      anim: heroAnimFor(run),
+    },
+    entities: run.enemies.map((enemy) => ({
+      id: enemy.id,
+      kind: enemy.kind,
+      x: enemy.x,
+      y: enemy.y,
+      hp: enemy.hp,
+      maxHp: enemy.maxHp,
+      facing: enemy.facing,
+      anim: enemy.dormantTurns > 0 ? "dead" : (enemyAnims.get(enemy.id) ?? "idle"),
+    })),
+    items: run.items.map((item) => ({ id: item.id, kind: item.kind, x: item.x, y: item.y })),
+    control: run.control,
+    turn: run.turn,
+    msPerTurn,
+    turnProgress: msPerTurn > 0 ? Math.min(1, Math.max(0, run.turnAccumulatorMs / msPerTurn)) : 0,
+    events: run.events,
+  };
+};

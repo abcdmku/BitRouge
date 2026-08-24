@@ -3,8 +3,12 @@
  * fetch-packs.ts
  *
  * Idempotently downloads third-party asset packs used by this project:
- *   1. Kenney "Tiny Dungeon" tileset (CC0) -> public/assets/packs/kenney-tiny-dungeon/
- *   2. Press Start 2P font (OFL)          -> public/fonts/
+ *   1. 0x72 Dungeon Tileset II v1.7 (CC0)   -> public/assets/packs/0x72-dungeontileset-ii/
+ *      (itch.io has no stable direct link; pulled verbatim from public GitHub mirrors,
+ *       sha256-verified) then converted with scripts/pack-0x72-atlas.ts
+ *   2. Kenney "1-Bit Pack" (CC0)             -> public/assets/packs/kenney-1bit/
+ *   3. Kenney "Tiny Dungeon" tileset (CC0)   -> public/assets/packs/kenney-tiny-dungeon/ (legacy, unused at runtime)
+ *   4. Press Start 2P font (OFL)             -> public/fonts/
  *
  * Run with: tsx scripts/fetch-packs.ts
  *
@@ -34,6 +38,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -47,6 +52,23 @@ const KENNEY_FALLBACK_PAGE_URL = "https://kenney.nl/assets/tiny-dungeon";
 const KENNEY_PACK_DIR = join(PACKS_DIR, "kenney-tiny-dungeon");
 const KENNEY_TILEMAP_DEST = join(KENNEY_PACK_DIR, "tilemap_packed.png");
 const KENNEY_LICENSE_DEST = join(KENNEY_PACK_DIR, "LICENSE.txt");
+
+const PACK_0X72_DIR = join(PACKS_DIR, "0x72-dungeontileset-ii");
+const PACK_0X72_SHEET = "0x72_DungeonTilesetII_v1.7.png";
+const PACK_0X72_SHEET_SHA256 = "b222e563f9006e609cb0a5ec99878b7ef9a92953de3abf4cf2ae9d2aff1355d2";
+const PACK_0X72_FILES = [PACK_0X72_SHEET, "tile_list_v1.7", "README"];
+/** Public repos that vendor the v1.7 pack unmodified (byte-identical sheets). */
+const PACK_0X72_MIRRORS = [
+  "https://raw.githubusercontent.com/veroteknic/godot2d/main/map/0x72_DungeonTilesetII_v1.7/",
+  "https://raw.githubusercontent.com/kantel/microstudio/main/assets/0x72_DungeonTilesetII_v1.7/",
+  "https://raw.githubusercontent.com/ImSauce/WitchType/main/Assets/Imports/0x72_DungeonTilesetII_v1.7/",
+];
+
+const KENNEY_1BIT_ZIP_URL =
+  "https://kenney.nl/media/pages/assets/1-bit-pack/aa867a1f37-1677578516/kenney_1-bit-pack.zip";
+const KENNEY_1BIT_PAGE_URL = "https://kenney.nl/assets/1-bit-pack";
+const KENNEY_1BIT_DIR = join(PACKS_DIR, "kenney-1bit");
+const KENNEY_1BIT_FILES = ["colored-transparent_packed.png", "monochrome-transparent_packed.png"];
 
 const FONT_TTF_URL =
   "https://raw.githubusercontent.com/google/fonts/main/ofl/pressstart2p/PressStart2P-Regular.ttf";
@@ -169,6 +191,79 @@ function readPngDimensions(pngPath: string): { width: number; height: number } {
   return { width, height };
 }
 
+async function fetch0x72(): Promise<void> {
+  const present = PACK_0X72_FILES.every((f) => existsSync(join(PACK_0X72_DIR, f)));
+  if (present && existsSync(join(PACK_0X72_DIR, "LICENSE.txt"))) {
+    console.log("[0x72-dungeontileset-ii] already present, skipping.");
+    return;
+  }
+  mkdirSync(PACK_0X72_DIR, { recursive: true });
+  let lastErr: unknown;
+  for (const base of PACK_0X72_MIRRORS) {
+    try {
+      console.log(`[0x72-dungeontileset-ii] downloading from ${base}`);
+      for (const f of PACK_0X72_FILES) await downloadFile(base + f, join(PACK_0X72_DIR, f));
+      const sha = createHash("sha256").update(readFileSync(join(PACK_0X72_DIR, PACK_0X72_SHEET))).digest("hex");
+      if (sha !== PACK_0X72_SHEET_SHA256) throw new Error(`sha256 mismatch for ${PACK_0X72_SHEET}: ${sha}`);
+      const { width, height } = readPngDimensions(join(PACK_0X72_DIR, PACK_0X72_SHEET));
+      console.log(`[0x72-dungeontileset-ii] done. sheet is ${width}x${height}. Now run: tsx scripts/pack-0x72-atlas.ts`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[0x72-dungeontileset-ii] mirror failed: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+  throw new Error(`Could not fetch 0x72 DungeonTileset II from any mirror. Download it manually from https://0x72.itch.io/dungeontileset-ii into ${PACK_0X72_DIR}. Last error: ${lastErr instanceof Error ? lastErr.message : lastErr}`);
+}
+
+async function resolveKenneyZip(direct: string, page: string, slug: string): Promise<string> {
+  const head = await fetch(direct, { method: "HEAD" }).catch(() => undefined);
+  if (head && head.ok) return direct;
+  const res = await fetch(page);
+  if (!res.ok) throw new Error(`GET ${page} returned HTTP ${res.status}`);
+  const re = new RegExp(`https://kenney\.nl/media/pages/assets/${slug}/[^"'\s]+\.zip`);
+  const match = (await res.text()).match(re);
+  if (!match) throw new Error(`Could not find a .zip link on ${page}`);
+  return match[0];
+}
+
+async function fetchKenney1Bit(): Promise<void> {
+  if (KENNEY_1BIT_FILES.every((f) => existsSync(join(KENNEY_1BIT_DIR, f))) && existsSync(join(KENNEY_1BIT_DIR, "LICENSE.txt"))) {
+    console.log("[kenney-1bit] already present, skipping.");
+    return;
+  }
+  const zipUrl = await resolveKenneyZip(KENNEY_1BIT_ZIP_URL, KENNEY_1BIT_PAGE_URL, "1-bit-pack");
+  const workDir = join(tmpdir(), `bitrouge-kenney1bit-${Date.now()}`);
+  const zipPath = join(workDir, "pack.zip");
+  const extractDir = join(workDir, "extracted");
+  try {
+    console.log(`[kenney-1bit] downloading ${zipUrl}`);
+    await downloadFile(zipUrl, zipPath);
+    extractZip(zipPath, extractDir);
+    mkdirSync(KENNEY_1BIT_DIR, { recursive: true });
+    for (const f of KENNEY_1BIT_FILES) {
+      const src = findFileRecursive(extractDir, f);
+      if (!src) throw new Error(`${f} not found inside the downloaded archive.`);
+      copyFileSync(src, join(KENNEY_1BIT_DIR, f));
+    }
+    const license = findFileRecursive(extractDir, "License.txt");
+    const notice = [
+      (license ? readFileSync(license, "utf8") : "").trimEnd(),
+      "",
+      "\t\t\t------------------------------",
+      "",
+      `\tSource: ${KENNEY_1BIT_PAGE_URL}`,
+      `\tDownloaded from: ${zipUrl}`,
+      `\tFiles: ${KENNEY_1BIT_FILES.join(", ")} (784x352, 49x22 tiles @16px, no spacing)`,
+      "",
+    ].join("\n");
+    writeFileSync(join(KENNEY_1BIT_DIR, "LICENSE.txt"), notice);
+    console.log("[kenney-1bit] done.");
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
 async function fetchPressStart2P(): Promise<void> {
   const ttfExists = existsSync(FONT_TTF_DEST) && statSync(FONT_TTF_DEST).size > 50 * 1024;
   const oflExists = existsSync(FONT_OFL_DEST);
@@ -202,6 +297,8 @@ async function main(): Promise<void> {
   mkdirSync(PACKS_DIR, { recursive: true });
   mkdirSync(FONTS_DIR, { recursive: true });
 
+  await fetch0x72();
+  await fetchKenney1Bit();
   await fetchKenneyTinyDungeon();
   await fetchPressStart2P();
 

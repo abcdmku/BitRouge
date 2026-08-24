@@ -1,0 +1,6 @@
+name: unknown-char
+size: 4x2
+palette: bitrouge-20
+frame 0
+KK?K
+KKKK
