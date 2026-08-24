@@ -1,0 +1,28 @@
+{
+ "image": "tileset.png",
+ "tileWidth": 16,
+ "tileHeight": 16,
+ "columns": 16,
+ "firstgid": 1,
+ "gids": {
+  "port_down:0": 1,
+  "port_down:1": 2,
+  "port_down:2": 3,
+  "port_down:3": 4,
+  "tile_corrupt:0": 5,
+  "tile_corrupt:1": 6,
+  "tile_corrupt:2": 7,
+  "tile_door:0": 8,
+  "tile_door:1": 9,
+  "tile_floor_cable:0": 10,
+  "tile_floor_cable:1": 11,
+  "tile_floor:0": 12,
+  "tile_floor:1": 13,
+  "tile_floor:2": 14,
+  "tile_vent:0": 15,
+  "tile_vent:1": 16,
+  "tile_wall_rack:0": 17,
+  "tile_wall_rack:1": 18,
+  "tile_wall_top:0": 19
+ }
+}

@@ -1,0 +1,725 @@
+{
+ "angel_idle": {
+  "frames": [
+   "angel_idle_anim_f0",
+   "angel_idle_anim_f1",
+   "angel_idle_anim_f2",
+   "angel_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "angel_run": {
+  "frames": [
+   "angel_run_anim_f0",
+   "angel_run_anim_f1",
+   "angel_run_anim_f2",
+   "angel_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "big_demon_idle": {
+  "frames": [
+   "big_demon_idle_anim_f0",
+   "big_demon_idle_anim_f1",
+   "big_demon_idle_anim_f2",
+   "big_demon_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "big_demon_run": {
+  "frames": [
+   "big_demon_run_anim_f0",
+   "big_demon_run_anim_f1",
+   "big_demon_run_anim_f2",
+   "big_demon_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "big_zombie_idle": {
+  "frames": [
+   "big_zombie_idle_anim_f0",
+   "big_zombie_idle_anim_f1",
+   "big_zombie_idle_anim_f2",
+   "big_zombie_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "big_zombie_run": {
+  "frames": [
+   "big_zombie_run_anim_f0",
+   "big_zombie_run_anim_f1",
+   "big_zombie_run_anim_f2",
+   "big_zombie_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "chest_empty_open": {
+  "frames": [
+   "chest_empty_open_anim_f0",
+   "chest_empty_open_anim_f1",
+   "chest_empty_open_anim_f2"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "chest_full_open": {
+  "frames": [
+   "chest_full_open_anim_f0",
+   "chest_full_open_anim_f1",
+   "chest_full_open_anim_f2"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "chest_mimic_open": {
+  "frames": [
+   "chest_mimic_open_anim_f0",
+   "chest_mimic_open_anim_f1",
+   "chest_mimic_open_anim_f2"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "chort_idle": {
+  "frames": [
+   "chort_idle_anim_f0",
+   "chort_idle_anim_f1",
+   "chort_idle_anim_f2",
+   "chort_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "chort_run": {
+  "frames": [
+   "chort_run_anim_f0",
+   "chort_run_anim_f1",
+   "chort_run_anim_f2",
+   "chort_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "coin": {
+  "frames": [
+   "coin_anim_f0",
+   "coin_anim_f1",
+   "coin_anim_f2",
+   "coin_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "doc_idle": {
+  "frames": [
+   "doc_idle_anim_f0",
+   "doc_idle_anim_f1",
+   "doc_idle_anim_f2",
+   "doc_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "doc_run": {
+  "frames": [
+   "doc_run_anim_f0",
+   "doc_run_anim_f1",
+   "doc_run_anim_f2",
+   "doc_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "dwarf_f_hit": {
+  "frames": [
+   "dwarf_f_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "dwarf_f_idle": {
+  "frames": [
+   "dwarf_f_idle_anim_f0",
+   "dwarf_f_idle_anim_f1",
+   "dwarf_f_idle_anim_f2",
+   "dwarf_f_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "dwarf_f_run": {
+  "frames": [
+   "dwarf_f_run_anim_f0",
+   "dwarf_f_run_anim_f1",
+   "dwarf_f_run_anim_f2",
+   "dwarf_f_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "dwarf_m_hit": {
+  "frames": [
+   "dwarf_m_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "dwarf_m_idle": {
+  "frames": [
+   "dwarf_m_idle_anim_f0",
+   "dwarf_m_idle_anim_f1",
+   "dwarf_m_idle_anim_f2",
+   "dwarf_m_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "dwarf_m_run": {
+  "frames": [
+   "dwarf_m_run_anim_f0",
+   "dwarf_m_run_anim_f1",
+   "dwarf_m_run_anim_f2",
+   "dwarf_m_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "elf_f_hit": {
+  "frames": [
+   "elf_f_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "elf_f_idle": {
+  "frames": [
+   "elf_f_idle_anim_f0",
+   "elf_f_idle_anim_f1",
+   "elf_f_idle_anim_f2",
+   "elf_f_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "elf_f_run": {
+  "frames": [
+   "elf_f_run_anim_f0",
+   "elf_f_run_anim_f1",
+   "elf_f_run_anim_f2",
+   "elf_f_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "elf_m_hit": {
+  "frames": [
+   "elf_m_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "elf_m_idle": {
+  "frames": [
+   "elf_m_idle_anim_f0",
+   "elf_m_idle_anim_f1",
+   "elf_m_idle_anim_f2",
+   "elf_m_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "elf_m_run": {
+  "frames": [
+   "elf_m_run_anim_f0",
+   "elf_m_run_anim_f1",
+   "elf_m_run_anim_f2",
+   "elf_m_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "floor_spikes": {
+  "frames": [
+   "floor_spikes_anim_f0",
+   "floor_spikes_anim_f1",
+   "floor_spikes_anim_f2",
+   "floor_spikes_anim_f3"
+  ],
+  "fps": 5,
+  "loop": true
+ },
+ "goblin_idle": {
+  "frames": [
+   "goblin_idle_anim_f0",
+   "goblin_idle_anim_f1",
+   "goblin_idle_anim_f2",
+   "goblin_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "goblin_run": {
+  "frames": [
+   "goblin_run_anim_f0",
+   "goblin_run_anim_f1",
+   "goblin_run_anim_f2",
+   "goblin_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "ice_zombie": {
+  "frames": [
+   "ice_zombie_anim_f0",
+   "ice_zombie_anim_f1",
+   "ice_zombie_anim_f2",
+   "ice_zombie_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "imp_idle": {
+  "frames": [
+   "imp_idle_anim_f0",
+   "imp_idle_anim_f1",
+   "imp_idle_anim_f2",
+   "imp_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "imp_run": {
+  "frames": [
+   "imp_run_anim_f0",
+   "imp_run_anim_f1",
+   "imp_run_anim_f2",
+   "imp_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "knight_f_hit": {
+  "frames": [
+   "knight_f_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "knight_f_idle": {
+  "frames": [
+   "knight_f_idle_anim_f0",
+   "knight_f_idle_anim_f1",
+   "knight_f_idle_anim_f2",
+   "knight_f_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "knight_f_run": {
+  "frames": [
+   "knight_f_run_anim_f0",
+   "knight_f_run_anim_f1",
+   "knight_f_run_anim_f2",
+   "knight_f_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "knight_m_hit": {
+  "frames": [
+   "knight_m_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "knight_m_idle": {
+  "frames": [
+   "knight_m_idle_anim_f0",
+   "knight_m_idle_anim_f1",
+   "knight_m_idle_anim_f2",
+   "knight_m_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "knight_m_run": {
+  "frames": [
+   "knight_m_run_anim_f0",
+   "knight_m_run_anim_f1",
+   "knight_m_run_anim_f2",
+   "knight_m_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "lizard_f_hit": {
+  "frames": [
+   "lizard_f_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "lizard_f_idle": {
+  "frames": [
+   "lizard_f_idle_anim_f0",
+   "lizard_f_idle_anim_f1",
+   "lizard_f_idle_anim_f2",
+   "lizard_f_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "lizard_f_run": {
+  "frames": [
+   "lizard_f_run_anim_f0",
+   "lizard_f_run_anim_f1",
+   "lizard_f_run_anim_f2",
+   "lizard_f_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "lizard_m_hit": {
+  "frames": [
+   "lizard_m_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "lizard_m_idle": {
+  "frames": [
+   "lizard_m_idle_anim_f0",
+   "lizard_m_idle_anim_f1",
+   "lizard_m_idle_anim_f2",
+   "lizard_m_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "lizard_m_run": {
+  "frames": [
+   "lizard_m_run_anim_f0",
+   "lizard_m_run_anim_f1",
+   "lizard_m_run_anim_f2",
+   "lizard_m_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "masked_orc_idle": {
+  "frames": [
+   "masked_orc_idle_anim_f0",
+   "masked_orc_idle_anim_f1",
+   "masked_orc_idle_anim_f2",
+   "masked_orc_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "masked_orc_run": {
+  "frames": [
+   "masked_orc_run_anim_f0",
+   "masked_orc_run_anim_f1",
+   "masked_orc_run_anim_f2",
+   "masked_orc_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "muddy": {
+  "frames": [
+   "muddy_anim_f0",
+   "muddy_anim_f1",
+   "muddy_anim_f2",
+   "muddy_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "necromancer": {
+  "frames": [
+   "necromancer_anim_f0",
+   "necromancer_anim_f1",
+   "necromancer_anim_f2",
+   "necromancer_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "ogre_idle": {
+  "frames": [
+   "ogre_idle_anim_f0",
+   "ogre_idle_anim_f1",
+   "ogre_idle_anim_f2",
+   "ogre_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "ogre_run": {
+  "frames": [
+   "ogre_run_anim_f0",
+   "ogre_run_anim_f1",
+   "ogre_run_anim_f2",
+   "ogre_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "orc_shaman_idle": {
+  "frames": [
+   "orc_shaman_idle_anim_f0",
+   "orc_shaman_idle_anim_f1",
+   "orc_shaman_idle_anim_f2",
+   "orc_shaman_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "orc_shaman_run": {
+  "frames": [
+   "orc_shaman_run_anim_f0",
+   "orc_shaman_run_anim_f1",
+   "orc_shaman_run_anim_f2",
+   "orc_shaman_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "orc_warrior_idle": {
+  "frames": [
+   "orc_warrior_idle_anim_f0",
+   "orc_warrior_idle_anim_f1",
+   "orc_warrior_idle_anim_f2",
+   "orc_warrior_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "orc_warrior_run": {
+  "frames": [
+   "orc_warrior_run_anim_f0",
+   "orc_warrior_run_anim_f1",
+   "orc_warrior_run_anim_f2",
+   "orc_warrior_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "pumpkin_dude_idle": {
+  "frames": [
+   "pumpkin_dude_idle_anim_f0",
+   "pumpkin_dude_idle_anim_f1",
+   "pumpkin_dude_idle_anim_f2",
+   "pumpkin_dude_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "pumpkin_dude_run": {
+  "frames": [
+   "pumpkin_dude_run_anim_f0",
+   "pumpkin_dude_run_anim_f1",
+   "pumpkin_dude_run_anim_f2",
+   "pumpkin_dude_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "skelet_idle": {
+  "frames": [
+   "skelet_idle_anim_f0",
+   "skelet_idle_anim_f1",
+   "skelet_idle_anim_f2",
+   "skelet_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "skelet_run": {
+  "frames": [
+   "skelet_run_anim_f0",
+   "skelet_run_anim_f1",
+   "skelet_run_anim_f2",
+   "skelet_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "slug": {
+  "frames": [
+   "slug_anim_f0",
+   "slug_anim_f1",
+   "slug_anim_f2",
+   "slug_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "swampy": {
+  "frames": [
+   "swampy_anim_f0",
+   "swampy_anim_f1",
+   "swampy_anim_f2",
+   "swampy_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "tiny_slug": {
+  "frames": [
+   "tiny_slug_anim_f0",
+   "tiny_slug_anim_f1",
+   "tiny_slug_anim_f2",
+   "tiny_slug_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "tiny_zombie_idle": {
+  "frames": [
+   "tiny_zombie_idle_anim_f0",
+   "tiny_zombie_idle_anim_f1",
+   "tiny_zombie_idle_anim_f2",
+   "tiny_zombie_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "tiny_zombie_run": {
+  "frames": [
+   "tiny_zombie_run_anim_f0",
+   "tiny_zombie_run_anim_f1",
+   "tiny_zombie_run_anim_f2",
+   "tiny_zombie_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "wall_fountain_basin_blue": {
+  "frames": [
+   "wall_fountain_basin_blue_anim_f0",
+   "wall_fountain_basin_blue_anim_f1",
+   "wall_fountain_basin_blue_anim_f2"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "wall_fountain_basin_red": {
+  "frames": [
+   "wall_fountain_basin_red_anim_f0",
+   "wall_fountain_basin_red_anim_f1",
+   "wall_fountain_basin_red_anim_f2"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "wall_fountain_mid_blue": {
+  "frames": [
+   "wall_fountain_mid_blue_anim_f0",
+   "wall_fountain_mid_blue_anim_f1",
+   "wall_fountain_mid_blue_anim_f2"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "wall_fountain_mid_red": {
+  "frames": [
+   "wall_fountain_mid_red_anim_f0",
+   "wall_fountain_mid_red_anim_f1",
+   "wall_fountain_mid_red_anim_f2"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "wizzard_f_hit": {
+  "frames": [
+   "wizzard_f_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "wizzard_f_idle": {
+  "frames": [
+   "wizzard_f_idle_anim_f0",
+   "wizzard_f_idle_anim_f1",
+   "wizzard_f_idle_anim_f2",
+   "wizzard_f_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "wizzard_f_run": {
+  "frames": [
+   "wizzard_f_run_anim_f0",
+   "wizzard_f_run_anim_f1",
+   "wizzard_f_run_anim_f2",
+   "wizzard_f_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "wizzard_m_hit": {
+  "frames": [
+   "wizzard_m_hit_anim_f0"
+  ],
+  "fps": 6,
+  "loop": false
+ },
+ "wizzard_m_idle": {
+  "frames": [
+   "wizzard_m_idle_anim_f0",
+   "wizzard_m_idle_anim_f1",
+   "wizzard_m_idle_anim_f2",
+   "wizzard_m_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "wizzard_m_run": {
+  "frames": [
+   "wizzard_m_run_anim_f0",
+   "wizzard_m_run_anim_f1",
+   "wizzard_m_run_anim_f2",
+   "wizzard_m_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "wogol_idle": {
+  "frames": [
+   "wogol_idle_anim_f0",
+   "wogol_idle_anim_f1",
+   "wogol_idle_anim_f2",
+   "wogol_idle_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ },
+ "wogol_run": {
+  "frames": [
+   "wogol_run_anim_f0",
+   "wogol_run_anim_f1",
+   "wogol_run_anim_f2",
+   "wogol_run_anim_f3"
+  ],
+  "fps": 10,
+  "loop": true
+ },
+ "zombie": {
+  "frames": [
+   "zombie_anim_f0",
+   "zombie_anim_f1",
+   "zombie_anim_f2",
+   "zombie_anim_f3"
+  ],
+  "fps": 6,
+  "loop": true
+ }
+}
