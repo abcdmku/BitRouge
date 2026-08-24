@@ -1,7 +1,11 @@
 import { advanceGame } from "./advance";
 import { applyAction } from "./actions";
 import { amountToNumber } from "./amount";
+import { canAfford } from "./economy";
+import { getHardwareCost } from "./hardware";
 import { createInitialGameState } from "./initialState";
+import { getResearchDefinition } from "./research";
+import { HARDWARE_KINDS, type GameState } from "./types";
 
 const SEEDS = 20;
 
@@ -61,5 +65,49 @@ describe("balance: first run from the initial state", () => {
     // a faster clock runs the same turns in less time (credits/s goes up)
     const clock = outcome("clock", 4);
     expect(clock.credits / clock.elapsedMs).toBeGreaterThan((base.credits / base.elapsedMs) * 1.3);
+  }, 60_000);
+
+  /**
+   * IdleBit essence: the player is always about to afford something. From a
+   * fresh start, the first research (Local Scheduler, 5 Data) and the first
+   * hardware (cheapest row) must be affordable within 1-2 runs, and a second
+   * hardware buy within ~3 more. Loose guard, not an exact tuning.
+   */
+  it("greedy opening: first buys land within the first couple of runs", () => {
+    const cheapestHardwareCost = (state: GameState) =>
+      Math.min(
+        ...HARDWARE_KINDS.map((kind) => amountToNumber(getHardwareCost(kind, state.hub.hardware[kind]).credits)),
+      );
+    let firstHardwareRuns = 0;
+    let firstResearchRuns = 0;
+    for (let seed = 1; seed <= 10; seed += 1) {
+      let state = createInitialGameState(seed);
+      let runsToResearch: number | null = null;
+      let runsToHardware: number | null = null;
+      for (let runs = 0; runs < 6 && (runsToResearch === null || runsToHardware === null); runs += 1) {
+        state = applyAction(state, { type: "deploy" });
+        let guard = 0;
+        while (state.run && guard++ < 400) state = advanceGame(state, 60_000, "foreground").state;
+        const watchdog = getResearchDefinition("watchdogTimer");
+        if (
+          runsToResearch === null &&
+          canAfford(state.hub, { credits: watchdog.costCredits, data: watchdog.costData })
+        ) {
+          runsToResearch = state.hub.stats.runs;
+        }
+        if (runsToHardware === null && amountToNumber(state.hub.credits) >= cheapestHardwareCost(state)) {
+          runsToHardware = state.hub.stats.runs;
+        }
+      }
+      expect(runsToResearch, `seed ${seed}: Local Scheduler affordable`).not.toBeNull();
+      expect(runsToResearch!).toBeLessThanOrEqual(2);
+      expect(runsToHardware, `seed ${seed}: first hardware affordable`).not.toBeNull();
+      expect(runsToHardware!).toBeLessThanOrEqual(3);
+      firstResearchRuns += runsToResearch!;
+      firstHardwareRuns += runsToHardware!;
+    }
+    // on average both land after the very first run or two
+    expect(firstResearchRuns / 10).toBeLessThanOrEqual(1.5);
+    expect(firstHardwareRuns / 10).toBeLessThanOrEqual(2.5);
   }, 60_000);
 });

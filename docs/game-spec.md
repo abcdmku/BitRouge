@@ -33,39 +33,43 @@ If Watchdog is at least L1, a reboot countdown of `16 bits / clockHz` seconds ru
 
 All costs are `base × growth^n` Credits (n = current level).
 
-| Hardware | Cost | Effect |
-|---|---|---|
-| clock | 25 × 1.6^n | `clockHz = 2 × 1.15^n`; auto-turn `msPerTurn = 1000 × (2 × 1.35^(depth-1)) / clockHz`; reboot time |
-| cores | 140 × 2.05^n Credits + 2 × 1.3^n Data | daemon (passive) slots |
-| cache | 30 × 1.8^n | `attack = 1 + level` |
-| ram | 40 × 1.7^n | `maxHp = 8 + 6 × level` |
-| psu | 60 × 1.7^n | `powerBudget = 10 × 1.7^(level-1)`; items and daemons draw watts; over budget → lose a turn (trip) |
-| cooling | 50 × 1.75^n | heat dissipated per turn; attacks add heat; heat ≥ 10 → throttled (enemies act twice) |
-| scheduler | 80 × 2^n | auto-explore AI level |
+Display names echo IdleBit's rack vocabulary: **CPU Clock**, **CPU Cores**, **Cache**, **RAM**, **PSU**, **Cooling**, **Scheduler**. The hub UI renders the clock effect IdleBit-style ("2.3 Hz = 0.87s/turn").
+
+| Hardware | Display | Cost | Effect |
+|---|---|---|---|
+| clock | CPU Clock | 20 × 1.6^n | `clockHz = 2 × 1.15^n`; auto-turn `msPerTurn = 1000 × (2 × 1.35^(depth-1)) / clockHz`; reboot time |
+| cores | CPU Cores | 140 × 2.05^n Credits + 2 × 1.3^n Data | daemon (passive) slots |
+| cache | Cache | 30 × 1.8^n | `attack = 1 + level` |
+| ram | RAM | 35 × 1.7^n | `maxHp = 8 + 6 × level` |
+| psu | PSU | 60 × 1.7^n | `powerBudget = 10 × 1.7^(level-1)`; items and daemons draw watts; over budget → lose a turn (trip) |
+| cooling | Cooling | 45 × 1.75^n | heat dissipated per turn; attacks add heat; heat ≥ 10 → throttled (enemies act twice) |
+| scheduler | Scheduler | 80 × 2^n | auto-explore AI level |
+
+Base costs of clock/ram/cooling were tuned (25→20, 40→35, 50→45) so a greedy player affords the first hardware after 1–3 runs and a second within ~3 more — IdleBit's "always about to afford something" cadence. See `balance.test.ts` for the loose guard.
 
 ## Research (Data)
 
-Fifteen starters. Cost in Data unless noted.
+Fifteen starters. Cost in Data unless noted. Ids are stable; display labels echo IdleBit's research ladder, and every definition carries a one-line `flavor` in the transmission voice (exposed on `VisibleResearchRow.flavor`).
 
-| Id | Cost | Effect |
-|---|---|---|
-| watchdogTimer | 5 D + 50 cr | Watchdog L1: auto-redeploy, 2 h offline buffer |
-| cacheMapping | 6 | |
-| prefetchDaemon | 8 | |
-| thermalSensors | 10 | |
-| redundantRail | 10 | |
-| garbageCollector | 10 | |
-| priorityScheduler | 12 | |
-| multiCore | 15 | |
-| bugBounty | 20 | +25% kill credits |
-| coreDumpAnalysis | 25 | |
-| checkpointing | 30 | 1 revive per run |
-| processReaper | 35 | |
-| cronRuntime | 40 | Watchdog L2: 8 h |
-| deepScan | 60 | start at `floor(maxDepth / 2)` |
-| systemScheduler | 150 | Watchdog L3: 24 h |
+| Id | Display label | Cost | Effect |
+|---|---|---|---|
+| watchdogTimer | Local Scheduler | 5 | Watchdog L1: auto-redeploy, 2 h offline buffer |
+| cacheMapping | Cache Mapping | 6 | +2 sight radius |
+| prefetchDaemon | Prefetch Daemon | 8 | daemon: reveal floor items |
+| thermalSensors | Thermal Sensors | 10 | daemon: -1 heat/turn |
+| redundantRail | Redundant Rail | 10 | +50% PSU budget |
+| garbageCollector | Garbage Collector | 10 | daemon: +1 HP / 4 turns |
+| priorityScheduler | Priority Scheduler | 12 | +1 scheduler AI level |
+| multiCore | Multi-Core Control | 15 | +1 daemon slot |
+| bugBounty | Bug Bounty | 20 | +25% kill credits |
+| coreDumpAnalysis | Core Dump Analysis | 25 | double core-dump Data |
+| checkpointing | Checkpointing | 30 | 1 revive per run |
+| processReaper | Process Reaper | 35 | daemon: zombies stay dead |
+| cronRuntime | CRON Scheduler | 40 | Watchdog L2: 8 h |
+| deepScan | Deep Scan | 60 | start at `floor(maxDepth / 2)` |
+| systemScheduler | System Scheduler | 150 | Watchdog L3: 24 h |
 
-Watchdog growth beyond starters: L4 48 h, L5 168 h.
+Watchdog level names mirror IdleBit's Automation Buffer tiers exactly: L0 **Starting Node**, L1 **Local Scheduler** (2 h), L2 **CRON Runtime** (8 h), L3 **System Scheduler** (24 h), L4 **Cluster Controller** (48 h), L5 **Global Scheduler** (168 h).
 
 ## Dungeon
 
@@ -77,9 +81,9 @@ Generation:
 2. Sort rooms by x.
 3. Carve L-shaped corridors between consecutive rooms, so the floor is connected by construction.
 4. Spawn in room 0; stairs in the BFS-farthest room.
-5. Enemies `4 + 2 × depth`, items `3 + floor(depth / 2)`, hazards `2 × depth`.
+5. Enemies `4 + 2 × depth` (+1 kernelPanic on boss floors), items `3 + floor(depth / 2)`, hazards `2 × depth` (biome-weighted kinds).
 
-All draws go through `run.rng`, which is forked from the hub rng per run.
+All draws go through `run.rng`, which is forked from the hub rng per run. Enemy kind rolls are weighted by the depth's biome (see Biomes).
 
 ## Turn resolution
 
@@ -115,14 +119,70 @@ Scheduler level unlocks lower rows.
 | forkBomb | splits on hit |
 | daemon | ranged, keeps distance |
 | zombieProcess | revives once |
+| kernelPanic | boss (see below); never in the random pool |
 
 Scaling per depth: `hp × 1.15^depth`, `dmg + floor(depth / 3)`, kill credits `2 × 1.2^depth`.
+
+## Kernel Panic boss (every 5th floor)
+
+`isBossDepth(depth) = depth % 5 === 0`. On boss floors `generateFloor` places one **kernelPanic** on a floor cell adjacent to the stairs and sets `floor.stairsLocked = true`.
+
+- Stats: baseHp 20 (≈40 at depth 5 after scaling), baseDamage 2, **slow** (acts every other turn), chases and melees like a bitFlip.
+- Crossing 50% HP once (`splitTriggered`): spawns 2 alerted bitFlips in free neighbouring cells.
+- On death: kill credits × `KERNEL_PANIC_BOUNTY_MULTIPLIER` (20) — a jackpot worth roughly a full run — plus a guaranteed **coreDump** dropped on its tile, `run.bossKills += 1`, `stairsLocked = false`, and a `stairsUnlocked` event.
+- While locked, `descend` on the stairs is refused and emits a `stairsLocked` event.
+- Auto-explore: after frontier exploration, a locked floor targets the boss with an *unlimited* BFS (the normal chase limit is 8). If the boss is unreachable, `forceDescend` fires anyway — the anti-stall guarantee always wins; `forceDescend` ignores the lock by design.
+- Items can stack (a boss can die on a spawned item's cell); stepping on a cell picks up **all** items there.
+
+## Biomes (per 5 depths)
+
+`getBiome(depth)`: floors 1–5 **network**, 6–10 **storage**, 11+ **kernel**. Exposed additively as `RenderSnapshot.biome` and `VisibleRun.biome`.
+
+- Enemy mix (`BIOME_ENEMY_WEIGHTS`, multipliers on base weights): network favours bitFlip/daemon ×2; storage favours memoryLeak ×3, zombieProcess ×2.5 (bitFlip ×0.6); kernel favours deadlock ×2.5, forkBomb ×2, nullPointer ×2 (bitFlip ×0.5).
+- Hazard weights (`BIOME_HAZARD_WEIGHTS`): network leans brownout/overloadPlate, storage leans corruptedSector, kernel leans hotTile.
+- Renderer: `BIOME_TINTS` in `src/render/assets/manifest.ts` holds per-biome floor/wall multiply tints; TileLayer does not yet apply per-tile tints, so wiring is left to the render integrator.
+
+## Campaign transmissions
+
+IdleBit's signature progression frame: 3 chapters × 4 objectives (`src/game/campaign.ts`). Objectives are **monotone predicates** over persisted state (stats counters such as `deadlocksSurvived`, `bossKills`, `offlineRuns`), so completion is delta-invariant across any advance-step split. The chronological transmission log (`CampaignState.log`, ring of 32 with monotonic `seq`) is the only stored campaign state; the console prints new entries by tracking `lastSeq`, prefixing "Transmission:".
+
+| Chapter | Objective id | Label | Transmission |
+|---|---|---|---|
+| 1 Bootstrap Process | boot:first-deploy | Deploy a process | "First process deployed. The stack notices." |
+| | boot:first-kill | Terminate a fault | "One fault terminated. The heap breathes easier." |
+| | boot:first-bank | Bank a run | "First core dumped and banked. Death is a billing event." |
+| | boot:first-hardware | Buy hardware | "New silicon seated. The node is no longer stock." |
+| 2 Coherent Machine | coherent:cache-mapping | Research Cache Mapping | "Cache mapped. The process sees two tiles further." |
+| | coherent:depth-3 | Reach depth 3 | "Depth 3. The storage layer answers slowly." |
+| | coherent:survive-deadlock | Survive a deadlock | "Deadlock cleared. The scheduler keeps its promise." |
+| | coherent:bank-100 | Bank 100 lifetime credits | "One hundred credits on the ledger. Compound interest begins." |
+| 3 Standing Orders | orders:watchdog | Arm the watchdog | "Watchdog armed. The machine can keep a promise while unattended." |
+| | orders:offline-run | Complete an offline run | "The node worked while you were gone. Standing orders hold." |
+| | orders:depth-5 | Reach depth 5 | "Depth 5. Kernel space. Tread carefully." |
+| | orders:kernel-panic | Defeat a Kernel Panic | "Kernel Panic contained. The stack reboots around you." |
+
+Each objective also carries a `blockedReason` shown while incomplete. Exposed via `deriveVisibleState().campaign` (chapters, current objective) and `deriveVisibleState().campaignTransmissions` (the log).
+
+## IdleBit alignment table
+
+| IdleBit concept | BitRouge counterpart |
+|---|---|
+| Credits / Data currencies | Credits (spend) / Data (unlock) — unchanged |
+| K/M/B stack formatting (exact < 100 K, "230 K") | `formatAmount` ports IdleBit's bands and spacing: K M B T Q Qn S Sp |
+| Automation Buffer tiers (Starting Node → Local Scheduler → CRON Runtime → System Scheduler → …) | Watchdog levels, named identically |
+| Research ladder (Decode Logic → Cache Mapping → Local Scheduler → CRON Scheduler → System Scheduler) | Research labels: Cache Mapping, Local Scheduler, CRON Scheduler, System Scheduler, Multi-Core Control |
+| Campaign chapters + transmissions ("Coherent Machine") | 3 chapters × 4 objectives; chapter 2 is literally "Coherent Machine" |
+| "2.3 GHz" hardware effect strings | "2.3 Hz = 0.87s/turn" clock rows, "5.9 W budget" PSU rows |
+| Jobs/tasks produce currency | Runs produce currency; kill credits ≈ task payouts |
+| Offline buffer, capacity-at-departure authoritative | Same invariant, same `departureLevelId` mechanism |
+| Standing orders renew while away | Watchdog auto-redeploys runs while away |
+| Contracts / SLA windows | (out of scope for now — noted for a later milestone) |
 
 **Hazards**: hotTile (+heat), overloadPlate (PSU trip), corruptedSector (2 dmg), brownout (0 credits → lose turn).
 
 **Items**: patch, hotfix, cacheLine, heatsink, checkpoint, coreDump.
 
-Post-MVP growth: kernelPanic boss every 5 floors, biomes, persistent "flash" gear slot.
+Post-MVP growth: persistent "flash" gear slot. (kernelPanic boss and biomes shipped — see sections above.)
 
 ## State model (`src/game/types.ts`)
 
@@ -135,6 +195,7 @@ GameState {
   watchdog: { ownedLevelId; departureLevelId; offlineProcessedMs };
   time: { lastSavedAtMs; departedAtMs };
   lastAdvanceReport: AdvanceReport | null;
+  campaign: { completedObjectiveIds; log; nextLogSeq };   // additive
 }
 
 HubState {
@@ -142,7 +203,8 @@ HubState {
   data: Amount;
   hardware: Record<HardwareKind, number>;
   research: { completed: ResearchId[] };
-  stats: { runs; maxDepth; totalKills; lifetimeCredits };
+  stats: { runs; maxDepth; totalKills; lifetimeCredits;
+           deadlocksSurvived; bossKills; offlineRuns };   // last three additive
   rebootRemainingBits: number | null;
   lastRunSummary: RunSummary | null;
 }
@@ -183,8 +245,12 @@ AdvanceReport {
   runsCompleted; extrapolatedRuns;
   creditsBanked; dataBanked;
   bufferLevelId; bufferCapacityMs;
+  turnsSimulated; extrapolatedMs;   // additive diagnostics
+  hadActivity;                      // additive: gate the offline-return dialog
 }
 ```
+
+Offline runs (simulated + extrapolated) also increment `hub.stats.offlineRuns` for the campaign. `hadActivity` is false when a Starting Node save reloads with zero capacity, so the UI shows the "while you were away" dialog only when something happened.
 
 Planned `src/game/` files: `amount.ts rng.ts types.ts index.ts initialState.ts economy.ts hardware.ts research.ts watchdog.ts hero.ts run.ts advance.ts actions.ts selectors.ts renderSnapshot.ts save.ts dungeon/{grid,generate,fov,path,enemies,items,hazards,turn,autoExplore}.ts`, each with colocated tests.
 
@@ -201,8 +267,12 @@ RenderSnapshot {
   items;
   control; turn; msPerTurn; turnProgress;
   events: RunEvent[];
+  biome: "network" | "storage" | "kernel";   // additive
+  stairsLocked: boolean;                      // additive (boss floors)
 }
 ```
+
+Additive `RunEvent` kinds: `stairsLocked` (descend refused on a boss floor), `stairsUnlocked` (boss died). The `descended` event is no longer emitted for the turn-0 initial deploy.
 
 The renderer keeps `lastSeq` and plays only new events, so it is idempotent on remount and dropped frames. `RenderCommand` is the hero/control subset of `GameAction`.
 

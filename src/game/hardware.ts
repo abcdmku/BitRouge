@@ -31,16 +31,17 @@ const fmt = (value: number, digits = 2) =>
 export const hardwareDefinitions: Record<HardwareKind, HardwareDefinition> = {
   clock: {
     kind: "clock",
-    name: "Clock",
-    baseCost: 25,
+    name: "CPU Clock",
+    baseCost: 20,
     growth: "1.6",
     dataBase: null,
     dataGrowth: null,
+    // The hub UI appends the derived cadence, IdleBit style: "2.3 Hz = 0.87s/turn".
     describe: (level) => `${fmt(getClockHz(level))} Hz`,
   },
   cores: {
     kind: "cores",
-    name: "Cores",
+    name: "CPU Cores",
     baseCost: 140,
     growth: "2.05",
     dataBase: 2,
@@ -62,7 +63,7 @@ export const hardwareDefinitions: Record<HardwareKind, HardwareDefinition> = {
   ram: {
     kind: "ram",
     name: "RAM",
-    baseCost: 40,
+    baseCost: 35,
     growth: "1.7",
     dataBase: null,
     dataGrowth: null,
@@ -80,7 +81,7 @@ export const hardwareDefinitions: Record<HardwareKind, HardwareDefinition> = {
   cooling: {
     kind: "cooling",
     name: "Cooling",
-    baseCost: 50,
+    baseCost: 45,
     growth: "1.75",
     dataBase: null,
     dataGrowth: null,

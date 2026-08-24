@@ -62,6 +62,7 @@ import {
   advanceGame,
   applyAction,
   deserializeSave,
+  type GameState,
 } from "../../game";
 import { bitRougePersistence } from "../../platform";
 import { SAVE_KEY } from "../app/persistence";
@@ -175,7 +176,7 @@ describe("useGamePersistence", () => {
     );
 
     const run = vi.fn((request: { state: unknown; elapsedMs: number; mode: string }) =>
-      Promise.resolve(advanceGame(request.state, request.elapsedMs, "offline")),
+      Promise.resolve(advanceGame(request.state as GameState, request.elapsedMs, "offline")),
     );
     const runner = { mode: "synchronous" as const, run, dispose: vi.fn() };
 

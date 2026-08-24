@@ -199,6 +199,24 @@ export const chooseAutoAction = (run: RunState, stats: HeroStats): AutoDecision 
     if (step) return step;
   }
 
+  // Boss floors: stairs refuse `descend` while locked, so hunt the kernelPanic
+  // (no path-length limit) instead of parking on the stairs. If the boss is
+  // unreachable, forceDescend anyway — the anti-stall guarantee wins.
+  if (run.floor.stairsLocked) {
+    const boss = run.enemies.find((candidate) => candidate.kind === "kernelPanic" && isEnemyActive(candidate));
+    if (boss) {
+      const goal = toIndex(boss.x, boss.y, run.floor.width);
+      const path = searchWithFallback(run, ctx, (passable) =>
+        bfsSearch(run.floor, hero, passable, (index) => index === goal),
+      );
+      if (path && path.length > 0) {
+        const step = stepAlong(run, path);
+        if (step) return step;
+      }
+    }
+    return { action: { type: "forceDescend" }, autoPath: null };
+  }
+
   if (isHeroOnStairs(run)) return { action: { type: "descend" }, autoPath: null };
   const stairsIndex = toIndex(run.floor.stairs.x, run.floor.stairs.y, run.floor.width);
   if (isExplored(run, stairsIndex)) {

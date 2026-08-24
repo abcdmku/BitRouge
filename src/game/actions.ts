@@ -1,3 +1,4 @@
+import { updateCampaignProgress } from "./campaign";
 import { pushEvent, findEnemyAt } from "./dungeon/draft";
 import { isWalkableTile, toIndex } from "./dungeon/grid";
 import { findPath } from "./dungeon/path";
@@ -61,7 +62,7 @@ const purchaseWatchdog = (state: GameState): GameState => {
   };
 };
 
-export const applyAction = (state: GameState, action: GameAction): GameState => {
+const applyActionInner = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
     case "buyHardware":
       return { ...state, hub: buyHardware(state.hub, action.kind) };
@@ -97,3 +98,7 @@ export const applyAction = (state: GameState, action: GameAction): GameState => 
       return state;
   }
 };
+
+/** Every action is followed by a campaign sweep; no-ops keep the same reference. */
+export const applyAction = (state: GameState, action: GameAction): GameState =>
+  updateCampaignProgress(applyActionInner(state, action));

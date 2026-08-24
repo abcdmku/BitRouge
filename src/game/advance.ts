@@ -1,4 +1,5 @@
 import { amount, amountAdd, amountDivide, amountFloor, amountMultiply, amountRound, type Amount } from "./amount";
+import { updateCampaignProgress } from "./campaign";
 import { chooseAutoAction } from "./dungeon/autoExplore";
 import { isEnemyActive } from "./dungeon/draft";
 import { dirTo, toIndex } from "./dungeon/grid";
@@ -99,7 +100,17 @@ const tick = (input: GameState, stepMs: number, tally: Tally): GameState => {
           tally.data = amountAdd(tally.data, summary.dataBanked);
           tally.durations.push(summary.elapsedMs + getRebootDurationMs(stats.clockHz));
         }
-        return state;
+        return updateCampaignProgress(state);
+      }
+      // Campaign sweep at the turn boundary keeps completion timing (and the
+      // transmission log order) identical for any advance-step split.
+      {
+        const composed: GameState = { ...state, run };
+        const updated = updateCampaignProgress(composed);
+        if (updated !== composed) {
+          state = updated;
+          run = updated.run ?? run;
+        }
       }
       if (!isRunTicking(run)) break;
     }
@@ -211,8 +222,20 @@ export const advanceGame = (input: GameState, elapsedMs: number, mode: AdvanceMo
     bufferCapacityMs: buffer.maxOfflineMs,
     turnsSimulated: tally.turns,
     extrapolatedMs,
+    hadActivity: simulatedMs > 0 && (tally.turns > 0 || tally.runsCompleted > 0 || extrapolatedRuns > 0),
   };
   if (mode === "offline") {
+    const offlineRunsAdded = tally.runsCompleted + extrapolatedRuns;
+    if (offlineRunsAdded > 0) {
+      state = {
+        ...state,
+        hub: {
+          ...state.hub,
+          stats: { ...state.hub.stats, offlineRuns: state.hub.stats.offlineRuns + offlineRunsAdded },
+        },
+      };
+    }
+    state = updateCampaignProgress(state);
     state = {
       ...state,
       watchdog: {

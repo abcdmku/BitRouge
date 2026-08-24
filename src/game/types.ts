@@ -1,6 +1,7 @@
 import type { Amount } from "./amount";
 import type { Xoshiro128State } from "./rng";
 import type {
+  Biome,
   Dir,
   EnemyKind,
   Facing,
@@ -11,7 +12,7 @@ import type {
   TileKindValue,
 } from "./renderSnapshot";
 
-export type { Dir, EnemyKind, Facing, HazardKind, ItemKind, RunEvent, TileKindValue };
+export type { Biome, Dir, EnemyKind, Facing, HazardKind, ItemKind, RunEvent, TileKindValue };
 
 export const HARDWARE_KINDS = [
   "clock",
@@ -99,6 +100,8 @@ export interface FloorState {
   visible: boolean[];
   stairs: Point;
   hazards: FloorHazard[];
+  /** boss floors: stairs refuse `descend` until the kernelPanic dies */
+  stairsLocked: boolean;
 }
 
 export interface Enemy {
@@ -116,6 +119,8 @@ export interface Enemy {
   revived: boolean;
   /** slow enemies act only when this is 0 */
   cooldown: number;
+  /** kernelPanic: has already spawned its 50%-HP bitFlips */
+  splitTriggered: boolean;
 }
 
 export interface FloorItem {
@@ -154,6 +159,10 @@ export interface RunState {
   pendingPath: Point[] | null;
   /** auto mode: cached auto-explore path (perf only; recomputed when invalid) */
   autoPath: Point[] | null;
+  /** deadlocks escaped or killed this run (campaign progress) */
+  deadlocksSurvived: number;
+  /** kernelPanic bosses defeated this run (campaign progress) */
+  bossKills: number;
 }
 
 export interface RunSummary {
@@ -175,6 +184,12 @@ export interface HubStats {
   maxDepth: number;
   totalKills: number;
   lifetimeCredits: Amount;
+  /** deadlocks escaped or killed across all runs */
+  deadlocksSurvived: number;
+  /** kernelPanic bosses defeated across all runs */
+  bossKills: number;
+  /** runs completed (simulated + extrapolated) by offline advances */
+  offlineRuns: number;
 }
 
 export interface HubState {
@@ -215,6 +230,30 @@ export interface AdvanceReport {
   /** extra diagnostics (additive to the spec shape) */
   turnsSimulated: number;
   extrapolatedMs: number;
+  /**
+   * additive: true only when the advance actually did something (turns, runs
+   * or extrapolation). Lets the UI skip the offline-return dialog when a
+   * Starting Node save reloads with zero capacity (everything in overflowMs).
+   */
+  hadActivity: boolean;
+}
+
+/** A campaign transmission delivered to the console log. */
+export interface CampaignLogEntry {
+  /** monotonic per-save; the UI keeps `lastSeq` like it does for run events */
+  seq: number;
+  objectiveId: string;
+  label: string;
+  /** the transmission line, IdleBit operator voice */
+  text: string;
+}
+
+export interface CampaignState {
+  /** chronological completion order */
+  completedObjectiveIds: string[];
+  /** ring of the most recent transmissions (<= 32), ascending seq */
+  log: CampaignLogEntry[];
+  nextLogSeq: number;
 }
 
 export interface GameState {
@@ -225,6 +264,7 @@ export interface GameState {
   watchdog: WatchdogState;
   time: TimeState;
   lastAdvanceReport: AdvanceReport | null;
+  campaign: CampaignState;
 }
 
 export interface AdvanceResult {

@@ -24,7 +24,7 @@ describe("manifest", () => {
   const frames = manifestFrames();
 
   it("covers all enemy, item and hazard kinds", () => {
-    const enemies = ["bitFlip", "nullPointer", "memoryLeak", "deadlock", "forkBomb", "daemon", "zombieProcess"];
+    const enemies = ["bitFlip", "nullPointer", "memoryLeak", "deadlock", "forkBomb", "daemon", "zombieProcess", "kernelPanic"];
     const items = ["patch", "hotfix", "cacheLine", "heatsink", "checkpoint", "coreDump"];
     const hazards = ["hotTile", "overloadPlate", "corruptedSector", "brownout"];
     for (const e of enemies) expect(keys).toContain(`enemy_${e}`);

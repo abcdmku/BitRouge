@@ -1,4 +1,5 @@
 import { amount, amountClampMin, type Amount } from "./amount";
+import { normalizeCampaignState } from "./campaign";
 import { EVENT_RING_SIZE } from "./dungeon/draft";
 import { HARDWARE_MAX_LEVEL } from "./hardware";
 import { createInitialGameState, createInitialHubState } from "./initialState";
@@ -78,7 +79,7 @@ export const createSaveEnvelope = (state: GameState, savedAtMs: number): SaveEnv
 export const serializeSave = (state: GameState, savedAtMs: number) =>
   JSON.stringify(createSaveEnvelope(state, savedAtMs));
 
-const ENEMY_KINDS: readonly EnemyKind[] = ["bitFlip", "nullPointer", "memoryLeak", "deadlock", "forkBomb", "daemon", "zombieProcess"];
+const ENEMY_KINDS: readonly EnemyKind[] = ["bitFlip", "nullPointer", "memoryLeak", "deadlock", "forkBomb", "daemon", "zombieProcess", "kernelPanic"];
 const ITEM_KINDS: readonly ItemKind[] = ["patch", "hotfix", "cacheLine", "heatsink", "checkpoint", "coreDump"];
 const HAZARD_KINDS: readonly HazardKind[] = ["hotTile", "overloadPlate", "corruptedSector", "brownout"];
 const TILE_VALUES = new Set<number>(Object.values(TileKind));
@@ -129,6 +130,9 @@ const normalizeHub = (value: unknown): HubState => {
       maxDepth: toInt(statsSource.maxDepth, 0),
       totalKills: toInt(statsSource.totalKills, 0),
       lifetimeCredits: toAmount(statsSource.lifetimeCredits, amount(0)),
+      deadlocksSurvived: toInt(statsSource.deadlocksSurvived, 0),
+      bossKills: toInt(statsSource.bossKills, 0),
+      offlineRuns: toInt(statsSource.offlineRuns, 0),
     },
     rebootRemainingBits: reboot === null ? null : Math.max(0, reboot),
     lastRunSummary: normalizeSummary(value.lastRunSummary),
@@ -162,7 +166,7 @@ const normalizeFloor = (value: unknown): FloorState | null => {
       if (index >= 0 && index < size) hazards.push({ index, kind: hazard.kind });
     }
   }
-  return { width, height, tiles, explored, visible, stairs, hazards };
+  return { width, height, tiles, explored, visible, stairs, hazards, stairsLocked: value.stairsLocked === true };
 };
 
 const normalizeHero = (value: unknown, floor: FloorState): HeroState | null => {
@@ -220,6 +224,7 @@ const normalizeEnemies = (value: unknown, floor: FloorState): Enemy[] => {
       dormantTurns: toInt(entry.dormantTurns, 0, 0, 99),
       revived: entry.revived === true,
       cooldown: toInt(entry.cooldown, 0, 0, 99),
+      splitTriggered: entry.splitTriggered === true,
     });
   }
   return enemies;
@@ -298,6 +303,8 @@ const normalizeRun = (value: unknown): RunState | null => {
     nextEntityId: Math.max(maxEntityId + 1, toInt(value.nextEntityId, 1, 1)),
     pendingPath: normalizePath(value.pendingPath, floor),
     autoPath: normalizePath(value.autoPath, floor),
+    deadlocksSurvived: toInt(value.deadlocksSurvived, 0),
+    bossKills: toInt(value.bossKills, 0),
   };
 };
 
@@ -317,6 +324,7 @@ export const normalizeGameState = (value: unknown): GameState => {
       departedAtMs: toNullableNumber(timeSource.departedAtMs),
     },
     lastAdvanceReport: null,
+    campaign: normalizeCampaignState(value.campaign as Partial<GameState["campaign"]>),
   };
 };
 

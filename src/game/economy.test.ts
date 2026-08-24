@@ -10,8 +10,8 @@ import type { GameState } from "./types";
 
 describe("economy", () => {
   it("hardware costs follow base × growth^n, rounded", () => {
-    expect(getHardwareCost("clock", 0)).toEqual({ credits: "25", data: "0" });
-    expect(getHardwareCost("clock", 1)).toEqual({ credits: "40", data: "0" });
+    expect(getHardwareCost("clock", 0)).toEqual({ credits: "20", data: "0" });
+    expect(getHardwareCost("clock", 1)).toEqual({ credits: "32", data: "0" });
     expect(getHardwareCost("cache", 2).credits).toBe("97"); // 30 × 1.8² = 97.2
     expect(getHardwareCost("cores", 1)).toEqual({ credits: "287", data: "3" }); // 140×2.05=287, 2×1.3=2.6
   });
@@ -64,7 +64,15 @@ describe("economy", () => {
     expect(ended.run).toBeNull();
     expect(ended.hub.credits).toBe("65");
     expect(ended.hub.data).toBe("16"); // 5 + 1 + 10
-    expect(ended.hub.stats).toEqual({ runs: 1, maxDepth: 2, totalKills: 4, lifetimeCredits: "55" });
+    expect(ended.hub.stats).toEqual({
+      runs: 1,
+      maxDepth: 2,
+      totalKills: 4,
+      lifetimeCredits: "55",
+      deadlocksSurvived: 0,
+      bossKills: 0,
+      offlineRuns: 0,
+    });
     expect(ended.hub.rebootRemainingBits).toBeNull();
     expect(ended.hub.lastRunSummary?.newMaxDepth).toBe(true);
 

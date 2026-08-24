@@ -30,6 +30,7 @@ const makeFloor = (): FloorState => {
     visible: new Array<boolean>(W * H).fill(true),
     stairs: { x: 9, y: 9 },
     hazards: [],
+    stairsLocked: false,
   };
 };
 
@@ -65,6 +66,8 @@ const makeRun = (overrides: Partial<RunState> = {}, stats = baseStats()): RunSta
   nextEntityId: 100,
   pendingPath: null,
   autoPath: null,
+  deadlocksSurvived: 0,
+  bossKills: 0,
   ...overrides,
 });
 

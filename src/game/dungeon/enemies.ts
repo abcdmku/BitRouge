@@ -1,6 +1,7 @@
 import type { EnemyKind } from "../renderSnapshot";
 import { nextRngFloat, type RngResult, type Xoshiro128State } from "../rng";
 import type { Enemy, HeroStats, RunState } from "../types";
+import { getBiomeEnemyWeight } from "./biomes";
 import {
   buildOccupancy,
   drawFloat,
@@ -43,7 +44,14 @@ export const enemyDefinitions: Record<EnemyKind, EnemyDefinition> = {
   forkBomb: { kind: "forkBomb", name: "Fork Bomb", baseHp: 4, baseDamage: 1, slow: false, minDepth: 2, weight: 2 },
   daemon: { kind: "daemon", name: "Daemon", baseHp: 3, baseDamage: 1, slow: false, minDepth: 2, weight: 2 },
   zombieProcess: { kind: "zombieProcess", name: "Zombie Process", baseHp: 4, baseDamage: 1, slow: true, minDepth: 3, weight: 2 },
+  // Boss: weight 0 keeps it out of the random pool; generate.ts places it on every 5th floor.
+  kernelPanic: { kind: "kernelPanic", name: "Kernel Panic", baseHp: 20, baseDamage: 2, slow: true, minDepth: 5, weight: 0 },
 };
+
+/** Boss bounty: kill credits are multiplied by this on a kernelPanic kill. */
+export const KERNEL_PANIC_BOUNTY_MULTIPLIER = 20;
+/** bitFlips spawned when the boss first drops to half HP. */
+export const KERNEL_PANIC_SPLIT_COUNT = 2;
 
 export const ENEMY_AGGRO_RANGE = 8;
 export const DAEMON_RANGE = 4;
@@ -69,16 +77,23 @@ export const createEnemy = (kind: EnemyKind, depth: number, id: number, x: numbe
   dormantTurns: 0,
   revived: false,
   cooldown: 0,
+  splitTriggered: false,
 });
 
+/** Weighted by depth gate and biome multipliers; zero-weight kinds (bosses) never roll. */
 export const pickEnemyKind = (rng: Xoshiro128State, depth: number): RngResult<EnemyKind> => {
-  const pool = Object.values(enemyDefinitions).filter((definition) => definition.minDepth <= depth);
-  const total = pool.reduce((sum, definition) => sum + definition.weight, 0);
+  const pool = Object.values(enemyDefinitions)
+    .map((definition) => ({
+      kind: definition.kind,
+      weight: definition.minDepth <= depth ? getBiomeEnemyWeight(definition.kind, definition.weight, depth) : 0,
+    }))
+    .filter((candidate) => candidate.weight > 0);
+  const total = pool.reduce((sum, candidate) => sum + candidate.weight, 0);
   const next = nextRngFloat(rng);
   let roll = next.value * total;
-  for (const definition of pool) {
-    roll -= definition.weight;
-    if (roll < 0) return { state: next.state, value: definition.kind };
+  for (const candidate of pool) {
+    roll -= candidate.weight;
+    if (roll < 0) return { state: next.state, value: candidate.kind };
   }
   return { state: next.state, value: pool[pool.length - 1]!.kind };
 };
@@ -162,7 +177,8 @@ export const actEnemy = (run: RunState, _stats: HeroStats, enemy: Enemy, occupan
     case "bitFlip":
     case "forkBomb":
     case "memoryLeak":
-    case "zombieProcess": {
+    case "zombieProcess":
+    case "kernelPanic": {
       if (adjacent) attackHero(run, enemy, definition.name);
       else if (enemy.alerted) tryStep(run, occupancy, enemy, dirsToward(enemy, hero));
       return;

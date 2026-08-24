@@ -1,4 +1,4 @@
-import type { EnemyKind, HazardKind, ItemKind } from "../../game/renderSnapshot";
+import type { Biome, EnemyKind, HazardKind, ItemKind } from "../../game/renderSnapshot";
 import { TEX_GEN, TEX_KENNEY_1BIT, TEX_PACK_0X72 } from "../constants";
 
 /**
@@ -172,6 +172,11 @@ export const MANIFEST: Record<SemanticKey, ManifestEntry> = {
   enemy_forkBomb: { candidates: [monster("goblin", 0xffc266, 0)] },
   enemy_daemon: { candidates: [monster("chort", 0xd48cff, 1)] },
   enemy_zombieProcess: { candidates: [monster("zombie", 0xa8ff8c, 0, { single: true })] },
+  // Boss (every 5th floor): 0x72 big_demon (32x36, bottom-aligned) with a hot
+  // magenta tint; Kenney skull fallback keeps the key resolvable pack-less.
+  enemy_kernelPanic: {
+    candidates: [monster("big_demon", 0xff4f8a, 0), k1(K1.skull, { tint: 0xff4f8a })],
+  },
 
   // Items: Kenney 1-bit icons read as pickups; tinted per effect.
   item_patch: { candidates: [k1(K1.medkit)] },
@@ -185,6 +190,19 @@ export const MANIFEST: Record<SemanticKey, ManifestEntry> = {
   hazard_overloadPlate: { candidates: [gen("hazard_overloadPlate", { clips: { idle: "hazard_overloadPlate:arc" } })] },
   hazard_corruptedSector: { candidates: [gen("hazard_corruptedSector", { clips: { idle: "hazard_corruptedSector:glitch" } })] },
   hazard_brownout: { candidates: [gen("hazard_brownout", { clips: { idle: "hazard_brownout:flicker" } })] },
+};
+
+/**
+ * Per-biome multiply tints for ground/wall tiles (0xffffff = untinted).
+ * Data only: TileLayer builds its tilemap from gids and does not tint per
+ * tile today, so wiring these up needs a small TileLayer change (apply
+ * `BIOME_TINTS[snapshot.biome]` to the ground/wall layers, or to the fog
+ * overlay blend). Left for the render integrator; see report.
+ */
+export const BIOME_TINTS: Record<Biome, { floor: number; wall: number }> = {
+  network: { floor: 0xffffff, wall: 0xffffff },
+  storage: { floor: 0xbfd2a8, wall: 0xc8d8b0 },
+  kernel: { floor: 0xe0b0b8, wall: 0xd8a8b8 },
 };
 
 /** Minimal texture lookup so this stays testable without Phaser. */

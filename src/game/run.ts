@@ -23,6 +23,7 @@ const emptyFloor = (): FloorState => ({
   visible: [false],
   stairs: { x: 0, y: 0 },
   hazards: [],
+  stairsLocked: false,
 });
 
 /** Fork a run seed from the hub rng and enter the starting floor. No-op while a run is active. */
@@ -54,6 +55,8 @@ export const startRun = (state: GameState): GameState => {
     nextEntityId: 1,
     pendingPath: null,
     autoPath: null,
+    deadlocksSurvived: 0,
+    bossKills: 0,
   };
   enterFloor(run, stats, getStartDepth(state.hub));
   return {
@@ -94,6 +97,8 @@ export const endRun = (state: GameState, cause: string, aborted = false): GameSt
       runs: banked.stats.runs + 1,
       maxDepth: Math.max(banked.stats.maxDepth, run.maxDepthReached),
       totalKills: banked.stats.totalKills + run.kills,
+      deadlocksSurvived: banked.stats.deadlocksSurvived + run.deadlocksSurvived,
+      bossKills: banked.stats.bossKills + run.bossKills,
     },
     rebootRemainingBits: !aborted && hasWatchdog(state) ? REBOOT_BITS : null,
     lastRunSummary: summary,

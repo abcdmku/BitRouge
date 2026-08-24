@@ -1,5 +1,7 @@
-import { amountCompare, type Amount } from "./amount";
+import { amountCompare, amountToSafeNumber, type Amount } from "./amount";
 import { getNextEventMs, getRunMsPerTurn } from "./advance";
+import { getVisibleCampaign, type VisibleCampaign } from "./campaign";
+import { enemyDefinitions } from "./dungeon/enemies";
 import { itemDefinitions } from "./dungeon/items";
 import { canAfford, getHardwareBlockedReason, getResearchBlockedReason } from "./economy";
 import { formatAmount, formatDurationMs } from "./format";
@@ -7,9 +9,11 @@ import { getHardwareCost, hardwareDefinitions } from "./hardware";
 import { deriveHeroStats, getHeroAttack, getHeroPowerDraw, MAX_ITEM_SLOTS } from "./hero";
 import { researchDefinitions } from "./research";
 import { getRebootDurationMs, REBOOT_BITS } from "./run";
+import { getBiome, type Biome } from "./renderSnapshot";
 import {
   HARDWARE_KINDS,
   type AdvanceReport,
+  type CampaignLogEntry,
   type GameState,
   type HardwareKind,
   type HubStats,
@@ -49,6 +53,8 @@ export interface VisibleResearchRow {
   id: ResearchId;
   name: string;
   description: string;
+  /** one-line operator flavor (IdleBit transmission voice) */
+  flavor: string;
   costData: Amount;
   costCredits: Amount;
   costLabel: string;
@@ -122,6 +128,14 @@ export interface VisibleRun {
   pathPending: boolean;
   onStairs: boolean;
   elapsedMs: number;
+  /** additive: depth-band theme */
+  biome: Biome;
+  /** additive: boss floor gate — stairs refuse `descend` while true */
+  stairsLocked: boolean;
+  /** additive: live kernelPanic on this floor, for a boss HP bar */
+  boss: { id: number; name: string; hp: number; maxHp: number } | null;
+  /** additive: live credits/s of this run (banked-so-far over elapsed time) */
+  creditsPerSecond: number;
 }
 
 export interface VisibleReboot {
@@ -148,6 +162,16 @@ export interface VisibleState {
   /** ms until the next auto-turn / reboot event; null when idle */
   nextEventMs: number | null;
   clockHz: number;
+  /** additive: campaign chapters/objectives (IdleBit-style transmissions) */
+  campaign: VisibleCampaign;
+  /** additive: recent transmissions, ascending seq; the console keeps lastSeq */
+  campaignTransmissions: readonly CampaignLogEntry[];
+  /**
+   * additive: credits/s estimate — the live run's rate while one is active,
+   * otherwise the last completed run's rate (including its reboot pause).
+   */
+  creditsPerSecond: number;
+  creditsPerSecondLabel: string;
 }
 
 const costLabel = (credits: Amount, data: Amount) => {
@@ -186,6 +210,7 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       id: definition.id,
       name: definition.name,
       description: definition.description,
+      flavor: definition.flavor,
       costData: `${definition.costData}` as Amount,
       costCredits: `${definition.costCredits}` as Amount,
       costLabel: costLabel(`${definition.costCredits}` as Amount, `${definition.costData}` as Amount),
@@ -227,11 +252,17 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
     rows: watchdogRows,
   };
 
+  const roundTo = (value: number, decimals: number) => {
+    const factor = Math.pow(10, decimals);
+    return Math.round(value * factor) / factor;
+  };
+
   const run = state.run;
   let visibleRun: VisibleRun | null = null;
   if (run) {
     const msPerTurn = getRunMsPerTurn(state, run);
     const draw = getHeroPowerDraw(run.hero, stats);
+    const bossEnemy = run.enemies.find((enemy) => enemy.kind === "kernelPanic" && enemy.hp > 0) ?? null;
     visibleRun = {
       seed: run.seed,
       depth: run.depth,
@@ -246,8 +277,8 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       lockedTurns: run.hero.lockedTurns,
       revives: run.hero.checkpoint,
       attack: getHeroAttack(run.hero, stats),
-      powerDraw: draw,
-      powerBudget: stats.powerBudget,
+      powerDraw: roundTo(draw, 1),
+      powerBudget: roundTo(stats.powerBudget, 1),
       overBudget: draw > stats.powerBudget,
       credits: run.credits,
       creditsLabel: formatAmount(run.credits),
@@ -267,6 +298,18 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       pathPending: run.pendingPath !== null && run.pendingPath.length > 0,
       onStairs: run.hero.x === run.floor.stairs.x && run.hero.y === run.floor.stairs.y,
       elapsedMs: run.elapsedMs,
+      biome: getBiome(run.depth),
+      stairsLocked: run.floor.stairsLocked,
+      boss: bossEnemy
+        ? {
+            id: bossEnemy.id,
+            name: enemyDefinitions[bossEnemy.kind].name,
+            hp: bossEnemy.hp,
+            maxHp: bossEnemy.maxHp,
+          }
+        : null,
+      creditsPerSecond:
+        run.elapsedMs > 0 ? roundTo((amountToSafeNumber(run.credits) / run.elapsedMs) * 1000, 2) : 0,
     };
   }
 
@@ -282,6 +325,18 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       totalMs,
     };
   }
+
+  const summary = hub.lastRunSummary;
+  const creditsPerSecond =
+    visibleRun?.creditsPerSecond ??
+    (summary && summary.elapsedMs > 0
+      ? roundTo(
+          (amountToSafeNumber(summary.creditsBanked) /
+            (summary.elapsedMs + getRebootDurationMs(stats.clockHz))) *
+            1000,
+          2,
+        )
+      : 0);
 
   const nextEventMs = getNextEventMs(state);
   return {
@@ -302,6 +357,10 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
     lastRunSummary: hub.lastRunSummary,
     lastAdvanceReport: state.lastAdvanceReport,
     nextEventMs: Number.isFinite(nextEventMs) ? nextEventMs : null,
-    clockHz: stats.clockHz,
+    clockHz: roundTo(stats.clockHz, 2),
+    campaign: getVisibleCampaign(state),
+    campaignTransmissions: state.campaign.log,
+    creditsPerSecond,
+    creditsPerSecondLabel: formatAmount(`${creditsPerSecond}`),
   };
 };

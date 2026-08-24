@@ -1,6 +1,7 @@
-import { TileKind, type EnemyKind, type HazardKind, type ItemKind, type TileKindValue } from "../renderSnapshot";
+import { getBiome, TileKind, type EnemyKind, type HazardKind, type ItemKind, type TileKindValue } from "../renderSnapshot";
 import { nextRngFloat, nextRngInt, type Xoshiro128State } from "../rng";
 import type { Enemy, FloorItem, FloorState, Point } from "../types";
+import { BIOME_HAZARD_WEIGHTS } from "./biomes";
 import { createEnemy, pickEnemyKind } from "./enemies";
 import { FLOOR_HEIGHT, FLOOR_WIDTH, inBounds, isWalkableTile, neighbors4, toIndex, toPoint } from "./grid";
 import { pickItemKind } from "./items";
@@ -30,6 +31,9 @@ export const ROOM_PLACEMENT_TRIES = 200;
 export const getEnemyCount = (depth: number) => 4 + 2 * depth;
 export const getItemCount = (depth: number) => 3 + Math.floor(depth / 2);
 export const getHazardCount = (depth: number) => 2 * depth;
+
+/** Every 5th floor is a boss floor: a kernelPanic guards the stairs. */
+export const isBossDepth = (depth: number) => depth >= 5 && depth % 5 === 0;
 
 const HAZARD_KINDS: readonly HazardKind[] = ["hotTile", "overloadPlate", "corruptedSector", "brownout"];
 
@@ -144,6 +148,17 @@ export const generateFloor = (
   const stairs = roomCenter(stairsRoom);
   tiles[toIndex(stairs.x, stairs.y, width)] = TileKind.stairsDown;
 
+  // 4b. boss floors: a kernelPanic guards the stairs; stairs lock until it dies
+  let bossCell: Point | null = null;
+  if (isBossDepth(depth)) {
+    for (const cell of neighbors4(dims, stairs.x, stairs.y)) {
+      if (tiles[toIndex(cell.x, cell.y, width)] === TileKind.floor) {
+        bossCell = cell;
+        break;
+      }
+    }
+  }
+
   // 5. population
   const spawnRoom = rooms[0]!;
   const candidates: number[] = [];
@@ -152,6 +167,7 @@ export const generateFloor = (
     const { x, y } = toPoint(index, width);
     if (roomContains(spawnRoom, x, y)) continue;
     if (!inBounds(dims, x, y)) continue;
+    if (bossCell && x === bossCell.x && y === bossCell.y) continue;
     candidates.push(index);
   }
   const takeCell = (): Point | null => {
@@ -165,6 +181,7 @@ export const generateFloor = (
 
   let nextEntityId = firstEntityId;
   const enemies: Enemy[] = [];
+  if (bossCell) enemies.push(createEnemy("kernelPanic", depth, nextEntityId++, bossCell.x, bossCell.y));
   for (let count = 0; count < getEnemyCount(depth); count += 1) {
     const cell = takeCell();
     if (!cell) break;
@@ -182,11 +199,21 @@ export const generateFloor = (
     const kind: ItemKind = picked.value;
     items.push({ id: nextEntityId++, kind, x: cell.x, y: cell.y });
   }
+  const hazardWeights = BIOME_HAZARD_WEIGHTS[getBiome(depth)];
+  const hazardTotal = HAZARD_KINDS.reduce((sum, kind) => sum + hazardWeights[kind], 0);
+  const pickHazard = (): HazardKind => {
+    let roll = float() * hazardTotal;
+    for (const kind of HAZARD_KINDS) {
+      roll -= hazardWeights[kind];
+      if (roll < 0) return kind;
+    }
+    return HAZARD_KINDS[HAZARD_KINDS.length - 1]!;
+  };
   const hazards: FloorState["hazards"] = [];
   for (let count = 0; count < getHazardCount(depth); count += 1) {
     const cell = takeCell();
     if (!cell) break;
-    hazards.push({ index: toIndex(cell.x, cell.y, width), kind: HAZARD_KINDS[int(0, HAZARD_KINDS.length)]! });
+    hazards.push({ index: toIndex(cell.x, cell.y, width), kind: pickHazard() });
   }
 
   const floor: FloorState = {
@@ -197,6 +224,7 @@ export const generateFloor = (
     visible: new Array<boolean>(size).fill(false),
     stairs,
     hazards,
+    stairsLocked: bossCell !== null,
   };
   return { rng, floor, rooms, spawn, enemies, items, nextEntityId };
 };

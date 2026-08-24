@@ -12,13 +12,20 @@ import type { Enemy, HeroAction, HeroStats, Point, RunState } from "../types";
 import {
   cloneRunForTurn,
   findEnemyAt,
-  findItemAt,
   heroIndex,
   isCellFreeForEnemy,
   isEnemyActive,
   pushEvent,
 } from "./draft";
-import { actEnemy, beginEnemyPhase, MAX_FORK_BOMBS, ZOMBIE_REVIVE_TURNS } from "./enemies";
+import {
+  actEnemy,
+  beginEnemyPhase,
+  createEnemy,
+  KERNEL_PANIC_BOUNTY_MULTIPLIER,
+  KERNEL_PANIC_SPLIT_COUNT,
+  MAX_FORK_BOMBS,
+  ZOMBIE_REVIVE_TURNS,
+} from "./enemies";
 import { computeFov, revealExplored } from "./fov";
 import { generateFloor } from "./generate";
 import { DIR_VECTORS, facingForDir, isAdjacent, isWalkableAt, neighbors4, toIndex } from "./grid";
@@ -60,7 +67,8 @@ export const enterFloor = (run: RunState, stats: HeroStats, depth: number) => {
   run.hero.retreatTurns = 0;
   run.pendingPath = null;
   run.autoPath = null;
-  pushEvent(run, { kind: "descended", depth });
+  // turn 0 is the initial deploy, not a descent; the console/renderer skip it
+  if (run.turn > 0) pushEvent(run, { kind: "descended", depth });
   refreshVision(run, stats);
   revealItemsForPrefetch(run, stats);
 };
@@ -73,10 +81,24 @@ const findFreeNeighbor = (run: RunState, origin: Point): Point | null => {
 };
 
 const killEnemy = (run: RunState, stats: HeroStats, enemy: Enemy) => {
-  const credits = getKillCredits(run.depth, stats.killCreditMultiplier);
+  const base = getKillCredits(run.depth, stats.killCreditMultiplier);
+  // boss bounty: a kernelPanic pays out like a small run on its own
+  const credits =
+    enemy.kind === "kernelPanic" ? amountMultiply(base, KERNEL_PANIC_BOUNTY_MULTIPLIER) : base;
   run.credits = amountAdd(run.credits, credits);
   run.kills += 1;
   pushEvent(run, { kind: "enemyDied", id: enemy.id, enemyKind: enemy.kind, x: enemy.x, y: enemy.y, credits });
+  if (enemy.kind === "deadlock") run.deadlocksSurvived += 1;
+  if (enemy.kind === "kernelPanic") {
+    run.bossKills += 1;
+    // guaranteed coreDump drop where the boss stood
+    run.items.push({ id: run.nextEntityId, kind: "coreDump", x: enemy.x, y: enemy.y });
+    run.nextEntityId += 1;
+    if (run.floor.stairsLocked) {
+      run.floor.stairsLocked = false;
+      pushEvent(run, { kind: "stairsUnlocked" });
+    }
+  }
   if (enemy.kind === "zombieProcess" && !enemy.revived && stats.zombiesRevive) {
     enemy.hp = 0;
     enemy.dormantTurns = ZOMBIE_REVIVE_TURNS;
@@ -95,6 +117,19 @@ const heroAttack = (run: RunState, stats: HeroStats, enemy: Enemy) => {
   if (enemy.hp <= 0) {
     killEnemy(run, stats, enemy);
     return;
+  }
+  if (enemy.kind === "kernelPanic" && !enemy.splitTriggered && enemy.hp * 2 <= enemy.maxHp) {
+    // crossing half HP once: the panic sheds a pair of bitFlips
+    enemy.splitTriggered = true;
+    for (let spawned = 0; spawned < KERNEL_PANIC_SPLIT_COUNT; spawned += 1) {
+      const cell = findFreeNeighbor(run, enemy);
+      if (!cell) break;
+      const child = createEnemy("bitFlip", run.depth, run.nextEntityId, cell.x, cell.y);
+      child.alerted = true;
+      run.nextEntityId += 1;
+      run.enemies.push(child);
+      pushEvent(run, { kind: "enemySpawned", id: child.id, enemyKind: child.kind, x: child.x, y: child.y });
+    }
   }
   if (enemy.kind === "forkBomb" && enemy.hp > 1) {
     const forkCount = run.enemies.filter((candidate) => candidate.kind === "forkBomb").length;
@@ -134,6 +169,10 @@ const performHeroAction = (run: RunState, stats: HeroStats, action: HeroAction):
     case "descend": {
       const onStairs = hero.x === run.floor.stairs.x && hero.y === run.floor.stairs.y;
       if (!onStairs) return "acted";
+      if (run.floor.stairsLocked) {
+        pushEvent(run, { kind: "stairsLocked" });
+        return "acted";
+      }
       enterFloor(run, stats, run.depth + 1);
       return "descended";
     }
@@ -156,8 +195,10 @@ const performHeroAction = (run: RunState, stats: HeroStats, action: HeroAction):
       hero.x = tx;
       hero.y = ty;
       hero.retreatTurns = hadAdjacentEnemy ? hero.retreatTurns + 1 : 0;
-      const item = findItemAt(run, tx, ty);
-      if (item) pickUpItem(run, stats, item);
+      // items can stack (a boss drop can land on a spawned item); take them all
+      for (const item of run.items.filter((candidate) => candidate.x === tx && candidate.y === ty)) {
+        pickUpItem(run, stats, item);
+      }
       const hazard = findHazardAt(run.floor, toIndex(tx, ty, run.floor.width));
       if (hazard) triggerHazard(run, hazard);
       return "acted";
@@ -191,9 +232,11 @@ const applyDeadlockLock = (run: RunState) => {
   const lost = amountMultiply(run.credits, DEADLOCK_PENALTY_FRACTION);
   run.credits = amountSubtract(run.credits, lost);
   pushEvent(run, { kind: "deadlockPenalty", creditsLost: lost });
+  const before = run.enemies.length;
   run.enemies = run.enemies.filter(
     (enemy) => !(enemy.kind === "deadlock" && isEnemyActive(enemy) && isAdjacent(enemy, run.hero)),
   );
+  run.deadlocksSurvived += before - run.enemies.length;
   run.hero.lockedTurns = 0;
 };
 

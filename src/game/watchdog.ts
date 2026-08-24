@@ -1,5 +1,5 @@
 import { amount, type Amount } from "./amount";
-import { hasResearch } from "./research";
+import { getResearchDefinition, hasResearch } from "./research";
 import {
   WATCHDOG_LEVEL_IDS,
   type GameState,
@@ -41,13 +41,14 @@ const level = (
   capability,
 });
 
+/** Level names mirror IdleBit's Automation Buffer tiers. */
 export const watchdogLevelDefinitions: readonly WatchdogLevelDefinition[] = [
-  level("none", 0, "No Watchdog", 0, null, 0, 0, "Death ends the session. Closing freezes the run."),
-  level("watchdogTimer", 1, "Watchdog Timer", 2, "watchdogTimer", 50, 0, "Auto-redeploy after death. Runs continue for 2 h offline."),
-  level("cronRuntime", 2, "CRON Runtime", 8, "cronRuntime", 400, 0, "Runs continue for 8 h offline."),
-  level("systemScheduler", 3, "System Scheduler", 24, "systemScheduler", 3000, 0, "Runs continue for 24 h offline."),
-  level("clusterController", 4, "Cluster Controller", 48, null, 25000, 200, "Runs continue for 48 h offline."),
-  level("globalScheduler", 5, "Global Scheduler", 168, null, 250000, 1000, "Runs continue for 7 days offline."),
+  level("none", 0, "Starting Node", 0, null, 0, 0, "Death ends the session. Closing freezes the simulation."),
+  level("watchdogTimer", 1, "Local Scheduler", 2, "watchdogTimer", 50, 0, "Auto-redeploy after death. Runs keep going for up to 2 hours after you close the game."),
+  level("cronRuntime", 2, "CRON Runtime", 8, "cronRuntime", 400, 0, "Standing runs continue for up to 8 hours unattended."),
+  level("systemScheduler", 3, "System Scheduler", 24, "systemScheduler", 3000, 0, "Runs system policy for a full day unattended."),
+  level("clusterController", 4, "Cluster Controller", 48, null, 25000, 200, "Maintains runs across two unattended days."),
+  level("globalScheduler", 5, "Global Scheduler", 168, null, 250000, 1000, "Final seven-day offline buffer."),
 ];
 
 const byId = new Map(watchdogLevelDefinitions.map((definition) => [definition.id, definition]));
@@ -101,7 +102,7 @@ export const getWatchdogBlockedReason = (
   const next = getNextWatchdogDefinition(state);
   if (next?.id !== definition.id) return "Watchdog levels must be purchased in order.";
   if (definition.requiredResearchId && !hasResearch(state.hub, definition.requiredResearchId)) {
-    return `Requires ${definition.requiredResearchId} research.`;
+    return `Requires ${getResearchDefinition(definition.requiredResearchId).name} research.`;
   }
   return null;
 };

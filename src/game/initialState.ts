@@ -1,4 +1,5 @@
 import { amount } from "./amount";
+import { createCampaignState } from "./campaign";
 import { createRngState } from "./rng";
 import { createWatchdogState } from "./watchdog";
 import type { GameState, HubState } from "./types";
@@ -11,7 +12,15 @@ export const createInitialHubState = (): HubState => ({
   data: amount(0),
   hardware: { clock: 1, cores: 0, cache: 0, ram: 0, psu: 0, cooling: 0, scheduler: 0 },
   research: { completed: [] },
-  stats: { runs: 0, maxDepth: 0, totalKills: 0, lifetimeCredits: amount(0) },
+  stats: {
+    runs: 0,
+    maxDepth: 0,
+    totalKills: 0,
+    lifetimeCredits: amount(0),
+    deadlocksSurvived: 0,
+    bossKills: 0,
+    offlineRuns: 0,
+  },
   rebootRemainingBits: null,
   lastRunSummary: null,
 });
@@ -24,4 +33,5 @@ export const createInitialGameState = (seed: number = DEFAULT_SEED): GameState =
   watchdog: createWatchdogState(),
   time: { lastSavedAtMs: null, departedAtMs: null },
   lastAdvanceReport: null,
+  campaign: createCampaignState(),
 });

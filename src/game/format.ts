@@ -1,12 +1,13 @@
 import { amount, amountAbs, amountCompare, amountFloor, amountToSafeNumber, type Amount } from "./amount";
 
-const SUFFIXES = ["K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No"] as const;
-
-const withCommas = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+/** IdleBit's named stack bands: K M B T Q Qn S Sp (Sp clamps for larger values). */
+const SUFFIXES = ["K", "M", "B", "T", "Q", "Qn", "S", "Sp"] as const;
 
 /**
- * RuneScape-style: full number below 100,000; then floor to K (below 10M),
- * M (below 10B), B, T, ... Small fractional amounts keep one decimal.
+ * IdleBit stack formatting: exact digits below 100,000; then floor to `N K`
+ * (below 10M), `N M` (below 10B), B, T, Q, Qn, S, Sp — coefficient and suffix
+ * separated by a space, no thousands separators. Small fractional amounts keep
+ * one decimal (tenths), matching IdleBit's resource display clamp.
  */
 export const formatAmount = (value: Amount | string): string => {
   let normalized: Amount;
@@ -25,15 +26,17 @@ export const formatAmount = (value: Amount | string): string => {
       const fixed = asNumber.toFixed(1);
       return `${sign}${fixed.endsWith(".0") ? fixed.slice(0, -2) : fixed}`;
     }
-    return `${sign}${withCommas(integer)}`;
+    return `${sign}${integer}`;
   }
-  // 100,000 .. 9,999,999 → K ; 10,000,000 .. → M ; etc. Each suffix covers 3 digits, offset so
-  // the K tier starts at 6 digits and the M tier at 8 digits (RuneScape thresholds).
-  const tier = Math.min(SUFFIXES.length - 1, Math.floor((integer.length - 6) / 3) + (integer.length >= 8 ? 1 : 0));
+  // Bands (IdleBit thresholds): K covers 1e5..<1e7, then every band spans 3
+  // digits: M 1e7..<1e10, B 1e10..<1e13, T, Q, Qn, S, Sp (Sp clamps upward).
+  const tier =
+    integer.length <= 7
+      ? 0
+      : Math.min(SUFFIXES.length - 1, Math.ceil((integer.length - 7) / 3));
   const cut = 3 * (tier + 1);
-  if (integer.length <= cut) return `${sign}${withCommas(integer)}`;
   const head = integer.slice(0, integer.length - cut);
-  return `${sign}${withCommas(head)}${SUFFIXES[tier]}`;
+  return `${sign}${head} ${SUFFIXES[tier]}`;
 };
 
 export const formatDurationMs = (ms: number): string => {

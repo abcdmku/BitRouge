@@ -29,6 +29,9 @@ export type {
   AdvanceMode,
   AdvanceReport,
   AdvanceResult,
+  Biome,
+  CampaignLogEntry,
+  CampaignState,
   Dir,
   Enemy,
   EnemyKind,
@@ -69,7 +72,7 @@ export type {
   RenderItem,
   RenderSnapshot,
 } from "./renderSnapshot";
-export { TileKind, deriveRenderSnapshot } from "./renderSnapshot";
+export { TileKind, deriveRenderSnapshot, getBiome } from "./renderSnapshot";
 
 // ---- core API ---------------------------------------------------------------
 export { createInitialGameState, createInitialHubState, DEFAULT_SEED, STARTING_CREDITS } from "./initialState";
@@ -88,6 +91,25 @@ export {
   stepRunTurn,
 } from "./advance";
 export { deriveVisibleState } from "./selectors";
+export {
+  CAMPAIGN_LOG_SIZE,
+  campaignChapterDefinitions,
+  campaignObjectiveDefinitions,
+  createCampaignState,
+  getCampaignChapterDefinition,
+  getCampaignObjectiveDefinition,
+  getVisibleCampaign,
+  normalizeCampaignState,
+  updateCampaignProgress,
+} from "./campaign";
+export type {
+  CampaignChapterDefinition,
+  CampaignChapterId,
+  CampaignObjectiveDefinition,
+  VisibleCampaign,
+  VisibleCampaignChapter,
+  VisibleCampaignObjective,
+} from "./campaign";
 export type {
   VisibleHardwareRow,
   VisibleItemSlot,
@@ -157,8 +179,13 @@ export { REBOOT_BITS, createRunSummary, endRun, getRebootDurationMs, getStartDep
 
 // ---- dungeon (for debug views / tests) -------------------------------------
 export { FLOOR_HEIGHT, FLOOR_WIDTH, toIndex, toPoint } from "./dungeon/grid";
-export { generateFloor } from "./dungeon/generate";
-export { enemyDefinitions } from "./dungeon/enemies";
+export { generateFloor, isBossDepth } from "./dungeon/generate";
+export {
+  enemyDefinitions,
+  KERNEL_PANIC_BOUNTY_MULTIPLIER,
+  KERNEL_PANIC_SPLIT_COUNT,
+} from "./dungeon/enemies";
+export { BIOME_ENEMY_WEIGHTS, BIOME_HAZARD_WEIGHTS } from "./dungeon/biomes";
 export { itemDefinitions } from "./dungeon/items";
 export { hazardNames } from "./dungeon/hazards";
 export { resolveTurn } from "./dungeon/turn";

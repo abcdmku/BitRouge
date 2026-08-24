@@ -23,7 +23,11 @@ export type EnemyKind =
   | "deadlock"
   | "forkBomb"
   | "daemon"
-  | "zombieProcess";
+  | "zombieProcess"
+  | "kernelPanic";
+
+/** Depth band theme: floors 1-5 network, 6-10 storage, 11+ kernel. */
+export type Biome = "network" | "storage" | "kernel";
 
 export type ItemKind = "patch" | "hotfix" | "cacheLine" | "heatsink" | "checkpoint" | "coreDump";
 
@@ -77,7 +81,10 @@ export type RunEvent =
   | { seq: number; turn: number; kind: "tripped" }
   | { seq: number; turn: number; kind: "deadlockPenalty"; creditsLost: string }
   | { seq: number; turn: number; kind: "descended"; depth: number }
-  | { seq: number; turn: number; kind: "controlChanged"; control: "auto" | "manual" };
+  | { seq: number; turn: number; kind: "controlChanged"; control: "auto" | "manual" }
+  // Additive: kernelPanic boss floors (every 5th depth).
+  | { seq: number; turn: number; kind: "stairsLocked" }
+  | { seq: number; turn: number; kind: "stairsUnlocked" };
 
 export interface RenderSnapshot {
   /** run seed; the scene rebuilds its tilemap when runId or depth changes */
@@ -100,6 +107,10 @@ export interface RenderSnapshot {
   turnProgress: number;
   /** ring buffer of the most recent events (≤ 64), ascending seq */
   events: readonly RunEvent[];
+  /** additive: depth-band theme for palette/tint selection */
+  biome: Biome;
+  /** additive: boss floor gate — stairs refuse `descend` until the boss dies */
+  stairsLocked: boolean;
 }
 
 /** Commands the renderer / input layer may dispatch. The sim's GameAction is a superset. */
@@ -213,5 +224,11 @@ export const deriveRenderSnapshot = (state: GameState): RenderSnapshot | null =>
     msPerTurn,
     turnProgress: msPerTurn > 0 ? Math.min(1, Math.max(0, run.turnAccumulatorMs / msPerTurn)) : 0,
     events: run.events,
+    biome: getBiome(run.depth),
+    stairsLocked: run.floor.stairsLocked,
   };
 };
+
+/** Biome by depth band: 1-5 network, 6-10 storage, 11+ kernel. */
+export const getBiome = (depth: number): Biome =>
+  depth <= 5 ? "network" : depth <= 10 ? "storage" : "kernel";

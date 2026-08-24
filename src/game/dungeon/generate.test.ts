@@ -1,6 +1,6 @@
 import { TileKind } from "../renderSnapshot";
 import { createRngState } from "../rng";
-import { generateFloor, getEnemyCount, getHazardCount, getItemCount } from "./generate";
+import { generateFloor, getEnemyCount, getHazardCount, getItemCount, isBossDepth } from "./generate";
 import { FLOOR_HEIGHT, FLOOR_WIDTH, isWalkableTile, toIndex } from "./grid";
 import { bfsDistances } from "./path";
 
@@ -28,7 +28,10 @@ describe("generateFloor", () => {
       }
       expect(floor.tiles[toIndex(floor.stairs.x, floor.stairs.y, floor.width)]).toBe(TileKind.stairsDown);
       expect(floor.tiles[toIndex(spawn.x, spawn.y, floor.width)]).toBe(TileKind.floor);
-      expect(enemies.length).toBe(getEnemyCount(depth));
+      const bossCount = enemies.filter((enemy) => enemy.kind === "kernelPanic").length;
+      expect(bossCount).toBe(isBossDepth(depth) ? 1 : 0);
+      expect(enemies.length).toBe(getEnemyCount(depth) + bossCount);
+      expect(floor.stairsLocked).toBe(isBossDepth(depth));
       expect(items.length).toBe(getItemCount(depth));
       expect(floor.hazards.length).toBe(getHazardCount(depth));
       // no two entities share a cell, nothing sits on the spawn

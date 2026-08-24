@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import type { RenderSnapshot, TileKindValue } from "../game/renderSnapshot";
 import { TileKind } from "../game/renderSnapshot";
 import { DEPTH, FOG_REMEMBERED, FOG_UNEXPLORED, FOG_VISIBLE, TEX_TILESET, TILE } from "./constants";
-import { resolveSprite, SOURCE_TEXTURE, type FrameLookup, type SemanticKey, type SpriteRef } from "./assets/manifest";
+import { BIOME_TINTS, resolveSprite, SOURCE_TEXTURE, type FrameLookup, type SemanticKey, type SpriteRef } from "./assets/manifest";
 import { getTilesetInfo, type TilesetInfo } from "./assets/preload";
 import { applyRef, ensurePlaceholder } from "./EntityView";
 
@@ -110,6 +110,10 @@ export class TileLayer {
     this.ground = ground;
     this.fog = fog;
 
+    // Biome wash over the ground layer; "network" (and unknown) stays untinted.
+    const tints = BIOME_TINTS[snap.biome] ?? BIOME_TINTS.network;
+    const tinted = tints.floor !== 0xffffff || tints.wall !== 0xffffff;
+
     const isFloor = (x: number, y: number): boolean => {
       if (x < 0 || y < 0 || x >= width || y >= height) return false;
       return snap.tiles[y * width + x] !== TileKind.wall;
@@ -132,8 +136,10 @@ export class TileLayer {
         const kind = pickGroundTile(t, nb, hash);
         if (ground && info && kind !== "rock") {
           const gid = groundGid(GROUND_KEY[kind], info, lookup, hash >>> 8);
-          if (gid !== null) ground.putTileAt(gid, x, y);
-          else this.addOverlay(GROUND_KEY[kind], x, y, lookup, DEPTH.floor, hash >>> 8);
+          if (gid !== null) {
+            const tile = ground.putTileAt(gid, x, y);
+            if (tinted && tile) tile.tint = kind === "wall_rack" || kind === "wall_top" ? tints.wall : tints.floor;
+          } else this.addOverlay(GROUND_KEY[kind], x, y, lookup, DEPTH.floor, hash >>> 8);
         } else if (!ground && kind !== "rock") {
           this.addOverlay(GROUND_KEY[kind], x, y, lookup, DEPTH.floor, hash >>> 8);
         }

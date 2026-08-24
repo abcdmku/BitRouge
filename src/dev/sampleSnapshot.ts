@@ -99,6 +99,8 @@ export function createSampleSnapshot(): RenderSnapshot {
     msPerTurn: 500,
     turnProgress: 0,
     events: [],
+    biome: "network",
+    stairsLocked: false,
   };
 }
 
