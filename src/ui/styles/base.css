@@ -1,0 +1,80 @@
+:root {
+  --bg: #07080f;
+  --fg: #dbe7ff;
+  --muted: #7f8bb3;
+  --accent: #3ee0ff;
+  --px: 4px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Press Start 2P", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+img,
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.hub {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.hub__panel {
+  display: grid;
+  gap: calc(var(--px) * 4);
+  text-align: center;
+}
+
+.hub__title {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-shadow: var(--px) var(--px) 0 #0a2a33;
+}
+
+.hub__tagline {
+  margin: 0;
+  color: var(--muted);
+}
+
+.hub__deploy {
+  justify-self: center;
+  padding: calc(var(--px) * 2) calc(var(--px) * 5);
+  font: inherit;
+  color: var(--bg);
+  background: var(--accent);
+  border: 0;
+  box-shadow: var(--px) var(--px) 0 #0a2a33;
+  cursor: pointer;
+}
+
+.hub__deploy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

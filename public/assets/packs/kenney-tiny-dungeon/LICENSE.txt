@@ -1,0 +1,26 @@
+	Tiny Dungeon (1.0)
+
+	Created/distributed by Kenney (www.kenney.nl)
+	Creation date: 05-07-2022
+
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	This content is free to use in personal, educational and commercial projects.
+	Support us by crediting Kenney or www.kenney.nl (this is not mandatory)
+
+			------------------------------
+
+	Donate:   http://support.kenney.nl
+	Patreon:  http://patreon.com/kenney/
+
+	Follow on Twitter for updates:
+	http://twitter.com/KenneyNL
+
+			------------------------------
+
+	Source: https://kenney.nl/assets/tiny-dungeon
+	Downloaded from: https://kenney.nl/media/pages/assets/tiny-dungeon/f8422efb44-1674742415/kenney_tiny-dungeon.zip
+	File in this directory: tilemap_packed.png (192 x 176 px, 16px tiles, 12x11 grid)
