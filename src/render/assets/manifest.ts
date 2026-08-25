@@ -1,4 +1,4 @@
-import type { Biome, EnemyKind, HazardKind, ItemKind } from "../../game/renderSnapshot";
+import type { EnemyKind, HazardKind, ItemKind, Tier } from "../../game/renderSnapshot";
 import { TEX_GEN, TEX_KENNEY_1BIT, TEX_PACK_0X72 } from "../constants";
 
 /**
@@ -68,6 +68,12 @@ export type SemanticKey =
   | "fx_hit"
   | "fx_spark"
   | "fx_bolt"
+  // v2 work sites / payloads / leaks (redesign spec §3/§7)
+  | "site_dataNode"
+  | "site_jobStation"
+  | "site_ioPort"
+  | "payload"
+  | "leak"
   | `enemy_${EnemyKind}`
   | `item_${ItemKind}`
   | `hazard_${HazardKind}`;
@@ -158,6 +164,22 @@ export const MANIFEST: Record<SemanticKey, ManifestEntry> = {
   fx_spark: { candidates: [gen("fx_spark")] },
   fx_bolt: { candidates: [gen("fx_bolt", { clips: { idle: "fx_bolt:fly" } })] },
 
+  // Work sites (redesign §3). 0x72 props tinted per role; motion (pulse/blink/
+  // progress arc) is added in code by SiteView, not by clips.
+  // data node: big blue flask reads as a coolant-lit data crystal (cyan pulse).
+  site_dataNode: { candidates: [{ source: "0x72", frame: "flask_big_blue", tint: 0x6ff2ff }] },
+  // job station: crate as a squat machine chassis; amber = "work here".
+  site_jobStation: { candidates: [{ source: "0x72", frame: "crate", tint: 0xffc266 }] },
+  // I/O port: floor button; variant 0 = unlit (red), 1 = lit (blue) — SiteView
+  // resolves variant 1 when the port's payload has arrived.
+  site_ioPort: {
+    candidates: [{ source: "0x72", frame: "button_red_up", alts: ["button_red_up", "button_blue_up"] }],
+  },
+  // payload: closed chest tinted cold blue; bobs on the floor, rides its carrier.
+  payload: { candidates: [{ source: "0x72", frame: "chest_empty_open_anim_f0", tint: 0x9fd8ff, footOffset: 0 }] },
+  // leak cell: 0x72 goo blob retinted magenta (spec: "magenta goo" overlay).
+  leak: { candidates: [{ source: "0x72", frame: "wall_goo_base", tint: 0xff6bf1, alpha: 0.92 }] },
+
   // Enemies are software faults: 0x72 monsters (animated, shaded) tinted per
   // kind; bitFlip is the classic "bug" glyph (2-frame Kenney invader).
   enemy_bitFlip: {
@@ -193,16 +215,15 @@ export const MANIFEST: Record<SemanticKey, ManifestEntry> = {
 };
 
 /**
- * Per-biome multiply tints for ground/wall tiles (0xffffff = untinted).
- * Data only: TileLayer builds its tilemap from gids and does not tint per
- * tile today, so wiring these up needs a small TileLayer change (apply
- * `BIOME_TINTS[snapshot.biome]` to the ground/wall layers, or to the fog
- * overlay blend). Left for the render integrator; see report.
+ * Per-tier multiply tints for ground/wall tiles (redesign §2: cache cool blue,
+ * ram neutral navy, disk warm dark, kernel magenta-shifted). TileLayer applies
+ * these per tile at build time.
  */
-export const BIOME_TINTS: Record<Biome, { floor: number; wall: number }> = {
-  network: { floor: 0xffffff, wall: 0xffffff },
-  storage: { floor: 0xbfd2a8, wall: 0xc8d8b0 },
-  kernel: { floor: 0xe0b0b8, wall: 0xd8a8b8 },
+export const TIER_TINTS: Record<Tier, { floor: number; wall: number }> = {
+  cache: { floor: 0xaecdf5, wall: 0x9cbcec },
+  ram: { floor: 0xbcc4dd, wall: 0xa9b3d2 },
+  disk: { floor: 0xd6b894, wall: 0xc4a582 },
+  kernel: { floor: 0xe6a2cd, wall: 0xd38fc2 },
 };
 
 /** Minimal texture lookup so this stays testable without Phaser. */

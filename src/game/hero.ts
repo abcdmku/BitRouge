@@ -16,6 +16,9 @@ export const THROTTLE_ON_HEAT = 10;
 export const THROTTLE_OFF_HEAT = 4;
 export const MAX_ITEM_SLOTS = 6;
 export const ITEM_WATTS = 1;
+/** Extra watts drawn while hauling a payload. */
+export const HAUL_WATTS = 1;
+/** @deprecated v1 deadlock credit-penalty timer; the penalty is cut in v2. */
 export const DEADLOCK_LOCK_TURNS = 10;
 export const RETREAT_TURN_BUDGET = 5;
 
@@ -44,11 +47,17 @@ export const deriveHeroStats = (hub: HubState): HeroStats => {
     daemonSlots,
     activeDaemons,
     fovRadius: BASE_FOV_RADIUS + (hasResearch(hub, "cacheMapping") ? 2 : 0),
-    killCreditMultiplier: amount(hasResearch(hub, "bugBounty") ? "1.25" : "1"),
+    // v2: bugBounty is "Piecework Rates" (+25% work payouts); kills pay flat.
+    killCreditMultiplier: amount("1"),
     startingRevives: hasResearch(hub, "checkpointing") ? 1 : 0,
     daemonDraw,
     zombiesRevive: !activeDaemons.includes("processReaper"),
     coreDumpMultiplier: hasResearch(hub, "coreDumpAnalysis") ? 2 : 1,
+    cacheLevel: hub.hardware.cache,
+    workPayoutMultiplier: amount(hasResearch(hub, "bugBounty") ? "1.25" : "1"),
+    dmaController: hasResearch(hub, "dmaController"),
+    branchPredictor: hasResearch(hub, "branchPredictor"),
+    eccMemory: hasResearch(hub, "eccMemory"),
   };
 };
 
@@ -61,6 +70,9 @@ export const createHeroState = (stats: HeroStats, x: number, y: number): HeroSta
   heat: 0,
   throttled: false,
   lockedTurns: 0,
+  channelSiteId: null,
+  carryingPayloadId: null,
+  channelShield: false,
   items: [],
   buffs: [],
   checkpoint: stats.startingRevives,
@@ -72,5 +84,8 @@ export const createHeroState = (stats: HeroStats, x: number, y: number): HeroSta
 export const getHeroAttack = (hero: HeroState, stats: HeroStats) =>
   stats.attack + hero.buffs.reduce((total, buff) => total + buff.value, 0);
 
+/** Watts drawn this turn: daemons + carried items + hauling (+1 W). Overclock adds its own draw in the turn resolver. */
 export const getHeroPowerDraw = (hero: HeroState, stats: HeroStats) =>
-  stats.daemonDraw + hero.items.length * ITEM_WATTS;
+  stats.daemonDraw +
+  hero.items.length * ITEM_WATTS +
+  (hero.carryingPayloadId !== null ? HAUL_WATTS : 0);

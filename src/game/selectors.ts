@@ -9,7 +9,7 @@ import { getHardwareCost, hardwareDefinitions } from "./hardware";
 import { deriveHeroStats, getHeroAttack, getHeroPowerDraw, MAX_ITEM_SLOTS } from "./hero";
 import { researchDefinitions } from "./research";
 import { getRebootDurationMs, REBOOT_BITS } from "./run";
-import { getBiome, type Biome } from "./renderSnapshot";
+import { getTier, type Tier } from "./renderSnapshot";
 import {
   HARDWARE_KINDS,
   type AdvanceReport,
@@ -19,6 +19,7 @@ import {
   type HubStats,
   type ItemKind,
   type ResearchId,
+  type RunState,
   type RunSummary,
   type WatchdogLevelId,
 } from "./types";
@@ -98,6 +99,158 @@ export interface VisibleItemSlot {
   usable: boolean;
 }
 
+// ---- v2 run-work surfaces (redesign spec §7) --------------------------------
+
+/** Site kinds narrowed structurally from the sim's WorkSite (spec §7). */
+export type VisibleTaskKind = "dataNode" | "jobStation" | "ioPort";
+
+/** One IdleBit-style job row in the run's task queue. */
+export interface VisibleTaskRow {
+  id: number;
+  kind: VisibleTaskKind;
+  /** "sector 2" / "job 1" / "haul → port 1" */
+  name: string;
+  /** MINE / EXEC / HAUL */
+  verb: string;
+  /** 0..1 completed fraction */
+  progress: number;
+  /** "+4 D" / "+12 cr" */
+  payoutLabel: string;
+  /** "squatted by zombie", "corrupted 50%", "stolen by daemon", … */
+  blockedReason: string | null;
+  /** hero is channeling this site / carrying this haul's payload */
+  active: boolean;
+  done: boolean;
+}
+
+export interface VisibleQuota {
+  done: number;
+  required: number;
+  met: boolean;
+  /** "FLUSH 2/4" */
+  label: string;
+}
+
+export interface VisibleChanneling {
+  siteId: number;
+  name: string;
+  remainingTurns: number;
+  totalTurns: number;
+}
+
+export interface VisibleCarrying {
+  payloadId: number;
+  portId: number;
+  /** "payload → port 2" */
+  label: string;
+}
+
+type WorkSiteT = RunState["sites"][number];
+type PayloadT = RunState["payloads"][number];
+
+/** Per-kind 1-based ordinals in site array order (stable across a floor). */
+const siteOrdinals = (sites: readonly WorkSiteT[]): Map<number, number> => {
+  const counts: Record<string, number> = {};
+  const out = new Map<number, number>();
+  for (const site of sites) {
+    counts[site.kind] = (counts[site.kind] ?? 0) + 1;
+    out.set(site.id, counts[site.kind]!);
+  }
+  return out;
+};
+
+const siteName = (kind: VisibleTaskKind, ordinal: number): string =>
+  kind === "dataNode" ? `sector ${ordinal}` : kind === "jobStation" ? `job ${ordinal}` : `port ${ordinal}`;
+
+/** Console-facing site label, e.g. "sector 3". Shared with the syslog feed. */
+export const siteLabelById = (run: RunState, siteId: number): string => {
+  const site = run.sites.find((s) => s.id === siteId);
+  if (!site) return `site ${siteId}`;
+  return siteName(site.kind as VisibleTaskKind, siteOrdinals(run.sites).get(siteId) ?? siteId);
+};
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+const CORRUPTION_STEP_PCT = 25;
+
+const corruptionPct = (corrupted: number): number => Math.min(100, Math.round(corrupted * CORRUPTION_STEP_PCT));
+
+/** The floor's sites as IdleBit job rows (spec §6/§7 task queue). */
+export const deriveTaskRows = (run: RunState): VisibleTaskRow[] => {
+  const ordinals = siteOrdinals(run.sites);
+  const rows: VisibleTaskRow[] = [];
+  for (const site of run.sites) {
+    const kind = site.kind as VisibleTaskKind;
+    const ordinal = ordinals.get(site.id) ?? site.id;
+    if (kind === "dataNode") {
+      const zeroed = site.corrupted >= 4 || site.yieldData <= 0;
+      rows.push({
+        id: site.id,
+        kind,
+        name: siteName(kind, ordinal),
+        verb: "MINE",
+        progress: site.resolved ? 1 : clamp01(site.totalUnits > 0 ? 1 - site.remainingUnits / site.totalUnits : 0),
+        payoutLabel: zeroed ? "zeroed" : `+${site.yieldData} D`,
+        blockedReason: !site.resolved && site.corrupted > 0 ? `corrupted ${corruptionPct(site.corrupted)}%` : null,
+        active: run.hero.channelSiteId === site.id,
+        done: site.resolved,
+      });
+    } else if (kind === "jobStation") {
+      rows.push({
+        id: site.id,
+        kind,
+        name: siteName(kind, ordinal),
+        verb: "EXEC",
+        progress: site.resolved ? 1 : clamp01(site.totalUnits > 0 ? 1 - site.remainingUnits / site.totalUnits : 0),
+        payoutLabel: `+${formatAmount(site.payoutCredits)} cr`,
+        blockedReason: !site.resolved && site.squattedBy !== null ? "squatted by zombie" : null,
+        active: run.hero.channelSiteId === site.id,
+        done: site.resolved,
+      });
+    } else {
+      const payload = run.payloads.find((p) => p.portId === site.id);
+      const held = payload?.heldBy;
+      const lost = held === "lost";
+      rows.push({
+        id: site.id,
+        kind,
+        name: `haul → ${siteName(kind, ordinal)}`,
+        verb: "HAUL",
+        progress: site.resolved ? 1 : held === "hero" || typeof held === "number" ? 0.5 : 0,
+        payoutLabel: `+${formatAmount(payload?.payoutCredits ?? site.payoutCredits)} cr`,
+        blockedReason: site.resolved ? null : typeof held === "number" ? "stolen by daemon" : lost ? "payload lost" : null,
+        active: held === "hero",
+        done: site.resolved || lost,
+      });
+    }
+  }
+  return rows;
+};
+
+/** Context-sensitive label for the `interact` action (MINE / EXECUTE / PICK UP / DELIVER / GC). */
+export const deriveInteractLabel = (run: RunState): string | null => {
+  const hx = run.hero.x;
+  const hy = run.hero.y;
+  const near = (x: number, y: number) => Math.abs(x - hx) <= 1 && Math.abs(y - hy) <= 1;
+  const carried =
+    run.hero.carryingPayloadId !== null ? run.payloads.find((p) => p.id === run.hero.carryingPayloadId) : undefined;
+  if (carried) {
+    const port = run.sites.find((s) => s.id === carried.portId);
+    if (port && near(port.x, port.y)) return "DELIVER";
+  }
+  if (!carried) {
+    if (run.payloads.some((p) => p.heldBy === "floor" && near(p.x, p.y))) return "PICK UP";
+    for (const site of run.sites) {
+      if (site.resolved || !near(site.x, site.y)) continue;
+      if (site.kind === "jobStation" && site.squattedBy === null) return "EXECUTE";
+      if (site.kind === "dataNode") return "MINE";
+    }
+  }
+  const width = run.floor.width;
+  if (run.leaks.some((index) => near(index % width, Math.floor(index / width)))) return "GC";
+  return null;
+};
+
 export interface VisibleRun {
   seed: number;
   depth: number;
@@ -109,7 +262,6 @@ export interface VisibleRun {
   maxHp: number;
   heat: number;
   throttled: boolean;
-  lockedTurns: number;
   revives: number;
   attack: number;
   powerDraw: number;
@@ -117,7 +269,8 @@ export interface VisibleRun {
   overBudget: boolean;
   credits: Amount;
   creditsLabel: string;
-  salvageData: number;
+  /** Data mined from nodes this run (spec §7: replaces salvage's role) */
+  dataMined: number;
   kills: number;
   enemiesRemaining: number;
   items: VisibleItemSlot[];
@@ -128,14 +281,24 @@ export interface VisibleRun {
   pathPending: boolean;
   onStairs: boolean;
   elapsedMs: number;
-  /** additive: depth-band theme */
-  biome: Biome;
-  /** additive: boss floor gate — stairs refuse `descend` while true */
+  /** memory tier of the current depth band (replaces biome) */
+  tier: Tier;
+  /** quota gate — the bus gate refuses `descend` while true */
   stairsLocked: boolean;
-  /** additive: live kernelPanic on this floor, for a boss HP bar */
+  /** live kernelPanic on this floor, for a boss HP bar */
   boss: { id: number; name: string; hp: number; maxHp: number } | null;
-  /** additive: live credits/s of this run (banked-so-far over elapsed time) */
+  /** live credits/s of this run (banked-so-far over elapsed time) */
   creditsPerSecond: number;
+  // ---- v2 work surfaces (spec §7) ----
+  quota: VisibleQuota;
+  tasks: VisibleTaskRow[];
+  carrying: VisibleCarrying | null;
+  channeling: VisibleChanneling | null;
+  overclockTurns: number;
+  /** context verb for the interact button; null = nothing in reach */
+  interactLabel: string | null;
+  /** named failure once status is "dead" */
+  deathCause: string | null;
 }
 
 export interface VisibleReboot {
@@ -263,6 +426,12 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
     const msPerTurn = getRunMsPerTurn(state, run);
     const draw = getHeroPowerDraw(run.hero, stats);
     const bossEnemy = run.enemies.find((enemy) => enemy.kind === "kernelPanic" && enemy.hp > 0) ?? null;
+    const channelSite =
+      run.hero.channelSiteId !== null ? (run.sites.find((s) => s.id === run.hero.channelSiteId) ?? null) : null;
+    const carriedPayload: PayloadT | null =
+      run.hero.carryingPayloadId !== null
+        ? (run.payloads.find((p) => p.id === run.hero.carryingPayloadId) ?? null)
+        : null;
     visibleRun = {
       seed: run.seed,
       depth: run.depth,
@@ -274,7 +443,6 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       maxHp: run.hero.maxHp,
       heat: run.hero.heat,
       throttled: run.hero.throttled,
-      lockedTurns: run.hero.lockedTurns,
       revives: run.hero.checkpoint,
       attack: getHeroAttack(run.hero, stats),
       powerDraw: roundTo(draw, 1),
@@ -282,7 +450,7 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       overBudget: draw > stats.powerBudget,
       credits: run.credits,
       creditsLabel: formatAmount(run.credits),
-      salvageData: run.salvageData,
+      dataMined: run.dataMined,
       kills: run.kills,
       enemiesRemaining: run.enemies.filter((enemy) => enemy.dormantTurns === 0).length,
       items: run.hero.items.map((kind, slot) => ({
@@ -298,7 +466,7 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       pathPending: run.pendingPath !== null && run.pendingPath.length > 0,
       onStairs: run.hero.x === run.floor.stairs.x && run.hero.y === run.floor.stairs.y,
       elapsedMs: run.elapsedMs,
-      biome: getBiome(run.depth),
+      tier: getTier(run.depth),
       stairsLocked: run.floor.stairsLocked,
       boss: bossEnemy
         ? {
@@ -310,6 +478,31 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
         : null,
       creditsPerSecond:
         run.elapsedMs > 0 ? roundTo((amountToSafeNumber(run.credits) / run.elapsedMs) * 1000, 2) : 0,
+      quota: {
+        done: run.quota.done,
+        required: run.quota.required,
+        met: run.quota.done >= run.quota.required,
+        label: `FLUSH ${run.quota.done}/${run.quota.required}`,
+      },
+      tasks: deriveTaskRows(run),
+      carrying: carriedPayload
+        ? {
+            payloadId: carriedPayload.id,
+            portId: carriedPayload.portId,
+            label: `payload → ${siteLabelById(run, carriedPayload.portId)}`,
+          }
+        : null,
+      channeling: channelSite
+        ? {
+            siteId: channelSite.id,
+            name: siteLabelById(run, channelSite.id),
+            remainingTurns: channelSite.remainingUnits,
+            totalTurns: channelSite.totalUnits,
+          }
+        : null,
+      overclockTurns: run.overclockTurns,
+      interactLabel: deriveInteractLabel(run),
+      deathCause: run.deathCause,
     };
   }
 

@@ -2,8 +2,6 @@ import {
   amount,
   amountAdd,
   amountCompare,
-  amountDivide,
-  amountFloor,
   amountMultiply,
   amountPow,
   amountSubtract,
@@ -60,23 +58,22 @@ export const buyResearch = (hub: HubState, id: ResearchId): HubState => {
   return { ...paid, research: { completed: [...paid.research.completed, id] } };
 };
 
-/** Kill reward: 2 × 1.2^depth credits, times the research multiplier. Exact. */
+/**
+ * Kill reward: 1 × 1.15^(depth-1) credits (v2: kills pay pocket change; work
+ * pays). `multiplier` stays for boss bounties and future research. Exact.
+ */
 export const getKillCredits = (depth: number, multiplier: AmountInput = 1): Amount =>
-  amountMultiply(amountMultiply(2, amountPow("1.2", Math.max(0, Math.trunc(depth)))), multiplier);
+  amountMultiply(amountPow("1.15", Math.max(0, Math.trunc(depth) - 1)), multiplier);
 
-export const DATA_PER_CREDITS = 10;
 export const DATA_PER_NEW_DEPTH = 5;
 
-/** Data = floor(banked / 10) + salvage + 5 × each new max depth. */
-export const computeBankedData = (
-  creditsBanked: AmountInput,
-  salvageData: number,
-  newDepths: number,
-): Amount =>
-  amountAdd(
-    amountAdd(amountFloor(amountDivide(creditsBanked, DATA_PER_CREDITS)), Math.max(0, salvageData)),
-    DATA_PER_NEW_DEPTH * Math.max(0, newDepths),
-  );
+/**
+ * Banked Data = dataMined + 5 × each new max depth. BREAKING (approved,
+ * spec §8): the v1 floor(credits/10) conversion is removed — Data is mined,
+ * not rebated.
+ */
+export const computeBankedData = (dataMined: number, newDepths: number): Amount =>
+  amountAdd(Math.max(0, dataMined), DATA_PER_NEW_DEPTH * Math.max(0, newDepths));
 
 export const bankIntoHub = (hub: HubState, credits: AmountInput, data: AmountInput): HubState => ({
   ...hub,

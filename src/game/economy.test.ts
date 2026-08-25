@@ -31,8 +31,10 @@ describe("economy", () => {
     expect(withBounty.data).toBe("5");
     expect(withBounty.research.completed).toEqual(["bugBounty"]);
     expect(buyResearch(withBounty, "bugBounty")).toBe(withBounty);
-    expect(deriveHeroStats(withBounty).killCreditMultiplier).toBe("1.25");
-    expect(researchDefinitions).toHaveLength(15);
+    // v2: bugBounty is "Piecework Rates" — +25% work payouts, kills pay flat
+    expect(deriveHeroStats(withBounty).workPayoutMultiplier).toBe("1.25");
+    expect(deriveHeroStats(withBounty).killCreditMultiplier).toBe("1");
+    expect(researchDefinitions).toHaveLength(18);
   });
 
   it("derived stats match the plan table", () => {
@@ -42,28 +44,31 @@ describe("economy", () => {
     expect(stats.maxHp).toBe(8);
     expect(stats.heatDissipation).toBe(1);
     expect(stats.powerBudget).toBeCloseTo(10 / 1.7, 10);
+    // v2 latency: msPerTurn = 1000 × cycles(tier) / clockHz (2 / 5 / 12 / 8)
     expect(getMsPerTurn(2.3, 1)).toBeCloseTo(2000 / 2.3, 2);
-    expect(getMsPerTurn(2.3, 2)).toBeCloseTo((2000 * 1.35) / 2.3, 2);
+    expect(getMsPerTurn(2.3, 5)).toBeCloseTo(5000 / 2.3, 2);
+    expect(getMsPerTurn(2.3, 9)).toBeCloseTo(12000 / 2.3, 2);
+    expect(getMsPerTurn(2.3, 13)).toBeCloseTo(8000 / 2.3, 2);
   });
 
-  it("kill credits scale 2 × 1.2^depth exactly", () => {
-    expect(getKillCredits(1)).toBe("2.4");
-    expect(getKillCredits(3)).toBe("3.456");
-    expect(getKillCredits(1, "1.25")).toBe("3");
+  it("kill credits scale 1 × 1.15^(d-1) exactly (kills pay pocket change)", () => {
+    expect(getKillCredits(1)).toBe("1");
+    expect(getKillCredits(3)).toBe("1.3225");
+    expect(getKillCredits(1, "20")).toBe("20"); // boss bounty multiplier path
   });
 
-  it("banks Data = floor(credits/10) + salvage + 5 × new depths", () => {
-    expect(computeBankedData("37.9", 2, 2)).toBe("15");
-    expect(computeBankedData("0", 0, 0)).toBe("0");
+  it("banks Data = dataMined + 5 × new depths (credit conversion removed)", () => {
+    expect(computeBankedData(7, 2)).toBe("17");
+    expect(computeBankedData(0, 0)).toBe("0");
   });
 
   it("ending a run banks into the hub, updates stats, and arms the watchdog reboot", () => {
     let state: GameState = applyAction(createInitialGameState(1), { type: "deploy" });
-    state = { ...state, run: { ...state.run!, credits: amount(55), kills: 4, salvageData: 1, maxDepthReached: 2 } };
+    state = { ...state, run: { ...state.run!, credits: amount(55), kills: 4, dataMined: 6, maxDepthReached: 2 } };
     const ended = endRun(state, "test");
     expect(ended.run).toBeNull();
     expect(ended.hub.credits).toBe("65");
-    expect(ended.hub.data).toBe("16"); // 5 + 1 + 10
+    expect(ended.hub.data).toBe("16"); // dataMined 6 + 2 new depths × 5
     expect(ended.hub.stats).toEqual({
       runs: 1,
       maxDepth: 2,
@@ -72,6 +77,10 @@ describe("economy", () => {
       deadlocksSurvived: 0,
       bossKills: 0,
       offlineRuns: 0,
+      sitesCompleted: 0,
+      dataMined: 6,
+      payloadsDelivered: 0,
+      leaksCollected: 0,
     });
     expect(ended.hub.rebootRemainingBits).toBeNull();
     expect(ended.hub.lastRunSummary?.newMaxDepth).toBe(true);

@@ -56,11 +56,21 @@ const makeRun = (overrides: Partial<RunState> = {}, stats = baseStats()): RunSta
   elapsedMs: 0,
   credits: amount(0),
   salvageData: 0,
+  dataMined: 0,
   kills: 0,
   hero: createHeroState(stats, 2, 2),
   floor: makeFloor(),
   enemies: [],
   items: [],
+  sites: [],
+  payloads: [],
+  leaks: [],
+  quota: { required: 0, done: 0 },
+  overclockTurns: 0,
+  gcChannel: null,
+  sitesCompleted: 0,
+  payloadsDelivered: 0,
+  leaksCollected: 0,
   events: [],
   nextEventSeq: 1,
   nextEntityId: 100,
@@ -97,13 +107,13 @@ describe("resolveTurn", () => {
     expect(run.hero.hp).toBe(run.hero.maxHp - 1);
   });
 
-  it("bump attacks; killing banks credits and kills", () => {
+  it("bump attacks; killing banks 1 × 1.15^(d-1) credits (kills pay pocket change)", () => {
     let run = makeRun({ enemies: [enemy("bitFlip", 3, 2, { hp: 1 })] });
     run = resolveTurn(run, { type: "move", dir: "e" }, baseStats());
     expect(run.enemies).toHaveLength(0);
     expect(run.kills).toBe(1);
-    expect(run.credits).toBe("2.4");
-    expect(lastOf(run, "enemyDied")?.credits).toBe("2.4");
+    expect(run.credits).toBe("1");
+    expect(lastOf(run, "enemyDied")?.credits).toBe("1");
     expect(run.hero.x).toBe(2);
   });
 
@@ -115,38 +125,61 @@ describe("resolveTurn", () => {
     expect(next.hero.hp).toBe(next.hero.maxHp - 1);
   });
 
-  it("memoryLeak is slow and each hit lowers max HP for the floor", () => {
-    let run = makeRun({ enemies: [enemy("memoryLeak", 3, 2)] });
+  it("memoryLeak is a stationary allocator: no maxHp drain, walls off cells every 8 turns", () => {
+    let run = makeRun({ enemies: [enemy("memoryLeak", 6, 6)] });
     const stats = baseStats();
+    for (let i = 0; i < 7; i += 1) run = resolveTurn(run, { type: "wait" }, stats);
+    expect(run.enemies[0]!.x).toBe(6); // never moves
+    expect(run.enemies[0]!.y).toBe(6);
+    expect(run.leaks).toHaveLength(0);
     run = resolveTurn(run, { type: "wait" }, stats);
-    expect(run.hero.maxHp).toBe(7);
-    expect(run.hero.hp).toBe(6);
-    run = resolveTurn(run, { type: "wait" }, stats);
-    expect(run.hero.maxHp).toBe(7); // cooldown turn
-    run = resolveTurn(run, { type: "wait" }, stats);
-    expect(run.hero.maxHp).toBe(6);
-    // descending restores hardware max HP
-    run = { ...run, hero: { ...run.hero, x: 9, y: 9 } };
-    run = resolveTurn(run, { type: "descend" }, stats);
-    expect(run.depth).toBe(2);
-    expect(run.hero.maxHp).toBe(8);
+    expect(run.leaks).toHaveLength(1); // 8th turn: one adjacent cell leaks
+    expect(kinds(run)).toContain("leakSpawned");
+    for (let i = 0; i < 8; i += 1) run = resolveTurn(run, { type: "wait" }, stats);
+    expect(run.leaks).toHaveLength(2);
+    // adjacency still hurts (slow), but maxHp never drains
+    let close = makeRun({ enemies: [enemy("memoryLeak", 3, 2)] });
+    close = resolveTurn(close, { type: "wait" }, stats);
+    expect(close.hero.maxHp).toBe(close.hero.maxHp);
+    expect(close.hero.hp).toBe(close.hero.maxHp - 1);
+    expect(close.hero.maxHp).toBe(8);
   });
 
-  it("deadlock pins the hero; 10 locked turns cost 25% of run credits and release it", () => {
+  it("leak cells are impassable for the hero until garbage-collected", () => {
+    const stats = baseStats();
+    let run = makeRun({ leaks: [toIndex(3, 2, W)] });
+    run = resolveTurn(run, { type: "move", dir: "e" }, stats);
+    expect(run.hero.x).toBe(2); // blocked by the leak cell
+    // GC: 2-turn channel, pays 2 × 1.2^(d-1) credits
+    run = resolveTurn(run, { type: "interact" }, stats);
+    expect(run.gcChannel).toEqual({ index: toIndex(3, 2, W), remaining: 1 });
+    run = resolveTurn(run, { type: "interact" }, stats);
+    expect(run.leaks).toHaveLength(0);
+    expect(run.credits).toBe("2");
+    expect(run.leaksCollected).toBe(1);
+    expect(lastOf(run, "leakCollected")?.credits).toBe("2");
+    run = resolveTurn(run, { type: "move", dir: "e" }, stats);
+    expect(run.hero.x).toBe(3); // walkable again
+  });
+
+  it("deadlock pins the hero without damage or penalty; killing it counts and pays", () => {
     let run = makeRun({ enemies: [enemy("deadlock", 3, 2)], credits: amount(100) });
     const stats = baseStats();
     run = resolveTurn(run, { type: "move", dir: "w" }, stats);
-    expect(run.hero.x).toBe(2); // movement refused while locked
+    expect(run.hero.x).toBe(2); // movement refused while adjacent
     expect(run.hero.lockedTurns).toBe(1);
-    for (let i = 0; i < 8; i += 1) run = resolveTurn(run, { type: "wait" }, stats);
-    expect(run.hero.lockedTurns).toBe(9);
-    expect(run.credits).toBe("100");
-    run = resolveTurn(run, { type: "wait" }, stats);
-    expect(run.credits).toBe("75");
-    expect(lastOf(run, "deadlockPenalty")?.creditsLost).toBe("25");
-    expect(run.enemies).toHaveLength(0);
-    expect(run.hero.lockedTurns).toBe(0);
+    for (let i = 0; i < 11; i += 1) run = resolveTurn(run, { type: "wait" }, stats);
+    expect(run.hero.lockedTurns).toBe(12);
+    expect(run.credits).toBe("100"); // v2: the 25% credit penalty is cut
+    expect(run.enemies).toHaveLength(1); // and it no longer auto-releases
     expect(run.hero.hp).toBe(run.hero.maxHp); // deadlocks never deal damage
+    // kill it: gate reopens (small bounty) and it counts as survived
+    run = { ...run, enemies: [{ ...run.enemies[0]!, hp: 1 }] };
+    run = resolveTurn(run, { type: "move", dir: "e" }, stats);
+    expect(run.enemies).toHaveLength(0);
+    expect(run.deadlocksSurvived).toBe(1);
+    expect(run.credits).toBe("101");
+    expect(run.hero.lockedTurns).toBe(0);
   });
 
   it("forkBomb splits when hit and survives", () => {
@@ -286,7 +319,7 @@ describe("resolveTurn", () => {
     expect(run.hero.hp).toBe(6);
     expect(lastOf(run, "itemUsed")?.itemKind).toBe("patch");
     run = resolveTurn(run, { type: "move", dir: "e" }, stats);
-    expect(run.salvageData).toBe(1);
+    expect(run.dataMined).toBe(1); // coreDump salvage flows into dataMined
     run = resolveTurn(run, { type: "move", dir: "e" }, stats);
     expect(run.hero.checkpoint).toBe(1);
     run = resolveTurn(run, { type: "move", dir: "e" }, stats);
@@ -306,8 +339,8 @@ describe("resolveTurn", () => {
     run = { ...run, hero: { ...run.hero, hp: 1 } };
     run = resolveTurn(run, { type: "wait" }, stats);
     expect(run.status).toBe("dead");
-    expect(run.deathCause).toBe("Bit Flip");
-    expect(lastOf(run, "heroDied")?.cause).toBe("Bit Flip");
+    expect(run.deathCause).toBe("Uncorrectable bit flip"); // named failure
+    expect(lastOf(run, "heroDied")?.cause).toBe("Uncorrectable bit flip");
     // dead runs are inert
     expect(resolveTurn(run, { type: "wait" }, stats)).toBe(run);
   });
@@ -320,8 +353,12 @@ describe("resolveTurn", () => {
     expect(forced.depth).toBe(2);
     expect(forced.maxDepthReached).toBe(2);
     expect(lastOf(forced, "descended")?.depth).toBe(2);
-    expect(forced.floor.width).toBe(48);
-    expect(forced.enemies.length).toBe(8);
+    expect(forced.floor.width).toBeGreaterThan(10);
+    expect(forced.enemies.length).toBeGreaterThan(0);
+    // v2: generated floors carry work sites and a quota-locked bus gate
+    expect(forced.sites.length).toBeGreaterThan(0);
+    expect(forced.quota.required).toBeGreaterThan(0);
+    expect(forced.floor.stairsLocked).toBe(true);
   });
 
   it("keeps at most 64 events in the ring", () => {

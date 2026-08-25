@@ -20,13 +20,17 @@ export const createInitialHubState = (): HubState => ({
     deadlocksSurvived: 0,
     bossKills: 0,
     offlineRuns: 0,
+    sitesCompleted: 0,
+    dataMined: 0,
+    payloadsDelivered: 0,
+    leaksCollected: 0,
   },
   rebootRemainingBits: null,
   lastRunSummary: null,
 });
 
 export const createInitialGameState = (seed: number = DEFAULT_SEED): GameState => ({
-  version: 1,
+  version: 2,
   hub: createInitialHubState(),
   run: null,
   rng: createRngState(Number.isFinite(seed) ? Math.trunc(seed) : DEFAULT_SEED),

@@ -86,6 +86,10 @@ const applyActionInner = (state: GameState, action: GameAction): GameState => {
       return manualTurn(state, { type: "useItem", slot: action.slot });
     case "descend":
       return manualTurn(state, { type: "descend" });
+    case "interact":
+      return manualTurn(state, { type: "interact" });
+    case "overclock":
+      return manualTurn(state, { type: "overclock" });
     case "heroPathTo":
       return pathTo(state, action.x, action.y);
     case "recordSave":

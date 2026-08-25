@@ -9,6 +9,7 @@ import {
 } from "../game";
 import { RenderDevPage } from "../dev/RenderDevPage";
 import { AsciiFloor } from "./AsciiFloor";
+import { DeathReport } from "./DeathReport";
 import { DungeonView } from "./DungeonView";
 import { HardwarePanel } from "./HardwarePanel";
 import { HubPanel } from "./HubPanel";
@@ -19,6 +20,7 @@ import { ResourceHud } from "./ResourceHud";
 import { RunConsole, useRunLog, type LogLine } from "./RunConsole";
 import { RunHud, ItemSlots } from "./RunHud";
 import { SystemPanel } from "./SystemPanel";
+import { TaskQueue } from "./TaskQueue";
 import { TouchControls } from "./TouchControls";
 import { useGamePersistence } from "./hooks/useGamePersistence";
 import { useKeyboard } from "./hooks/useKeyboard";
@@ -91,6 +93,7 @@ function RunPanel({
 }) {
   return (
     <div className="panel">
+      {run ? <TaskQueue run={run} /> : null}
       <h2 className="panel__title">
         Console <small>{run ? "live" : "idle"}</small>
       </h2>
@@ -105,9 +108,14 @@ function RunPanel({
           <dl className="kv card">
             <dt>Seed</dt>
             <dd>{run.seed}</dd>
-            <dt>Depth</dt>
+            <dt>Tier</dt>
             <dd>
-              {run.depth} (best {run.maxDepthReached})
+              {run.tier} · D{run.depth} (best {run.maxDepthReached})
+            </dd>
+            <dt>Quota</dt>
+            <dd className={run.quota.met ? "good" : "warn"}>
+              {run.quota.done}/{run.quota.required}
+              {run.quota.met ? " — gate open" : ""}
             </dd>
             <dt>Attack</dt>
             <dd>{run.attack}</dd>
@@ -116,11 +124,14 @@ function RunPanel({
               {run.powerDraw.toFixed(1)}/{run.powerBudget.toFixed(1)} W
             </dd>
             <dt>Cadence</dt>
-            <dd>{formatSeconds(run.msPerTurn / 1000)}/turn</dd>
-            <dt>Enemies</dt>
+            <dd>
+              {formatSeconds(run.msPerTurn / 1000)}/turn
+              {run.overclockTurns > 0 ? ` (OC ${run.overclockTurns}t)` : ""}
+            </dd>
+            <dt>Faults</dt>
             <dd>{run.enemiesRemaining} awake</dd>
-            <dt>Salvage</dt>
-            <dd className="good">{run.salvageData} D</dd>
+            <dt>Data mined</dt>
+            <dd className="good">{run.dataMined} D</dd>
             <dt>Revives</dt>
             <dd>{run.revives}</dd>
             <dt>Control</dt>
@@ -130,7 +141,8 @@ function RunPanel({
             </dd>
           </dl>
           <p className="panel__hint">
-            Arrows/WASD move · &quot;.&quot; waits · Enter descends on stairs · Tab toggles auto. Swipe or tap the map on touch.
+            Arrows/WASD move · E interacts (mine/execute/haul/GC) · O overclocks · &quot;.&quot; waits · &quot;&gt;&quot;
+            flushes on the bus gate · Tab toggles auto. Swipe, tap a cell, or tap the hero to interact on touch.
           </p>
         </>
       ) : (
@@ -167,8 +179,16 @@ function Game() {
         <div className="stage__canvas">
           <DungeonView snapshot={snapshot} onCommand={dispatch} />
           {asciiEnabled() ? <AsciiFloor run={state.run} /> : null}
+          {run.status === "dead" ? <DeathReport run={state.run} /> : null}
           <div className="stage__hud">
-            <TouchControls onCommand={dispatch} control={control} className="stage__touch" />
+            <TouchControls
+              onCommand={dispatch}
+              control={control}
+              interactLabel={run.interactLabel}
+              overclockTurns={run.overclockTurns}
+              heat={run.heat}
+              className="stage__touch"
+            />
           </div>
         </div>
       </>

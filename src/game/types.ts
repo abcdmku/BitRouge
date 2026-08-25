@@ -7,12 +7,27 @@ import type {
   Facing,
   HazardKind,
   ItemKind,
+  PayloadHolder,
   RenderCommand,
   RunEvent,
+  Tier,
   TileKindValue,
+  WorkSiteKind,
 } from "./renderSnapshot";
 
-export type { Biome, Dir, EnemyKind, Facing, HazardKind, ItemKind, RunEvent, TileKindValue };
+export type {
+  Biome,
+  Dir,
+  EnemyKind,
+  Facing,
+  HazardKind,
+  ItemKind,
+  PayloadHolder,
+  RunEvent,
+  Tier,
+  TileKindValue,
+  WorkSiteKind,
+};
 
 export const HARDWARE_KINDS = [
   "clock",
@@ -41,6 +56,10 @@ export const RESEARCH_IDS = [
   "cronRuntime",
   "deepScan",
   "systemScheduler",
+  // v2 work research (§6): appended so v1 save research ids keep validating
+  "dmaController",
+  "branchPredictor",
+  "eccMemory",
 ] as const;
 export type ResearchId = (typeof RESEARCH_IDS)[number];
 
@@ -73,8 +92,14 @@ export interface HeroState {
   maxHp: number;
   heat: number;
   throttled: boolean;
-  /** consecutive turns spent adjacent to a deadlock */
+  /** consecutive turns spent adjacent to a deadlock (UI only; the v1 credit penalty is cut) */
   lockedTurns: number;
+  /** work site the hero is channeling (mine) or executing (job); null when idle */
+  channelSiteId: number | null;
+  /** payload the hero is hauling; null when not carrying */
+  carryingPayloadId: number | null;
+  /** additive: Branch Predictor research — absorbs the first hit of a channel */
+  channelShield: boolean;
   items: ItemKind[];
   buffs: HeroBuff[];
   /** revives remaining (checkpointing research + checkpoint items) */
@@ -119,8 +144,55 @@ export interface Enemy {
   revived: boolean;
   /** slow enemies act only when this is 0 */
   cooldown: number;
-  /** kernelPanic: has already spawned its 50%-HP bitFlips */
+  /** kernelPanic: has already fired its 50%-HP split / floor scramble */
   splitTriggered: boolean;
+  /** bitFlip / zombieProcess: work site being seeked or squatted */
+  targetSiteId: number | null;
+  /** daemon: payload it stole from the hero (null when not carrying) */
+  stolenPayloadId: number | null;
+  /** daemon: turns left to catch it before the stolen payload resolves as lost */
+  stealTimer: number;
+  /** additive: generic per-kind work timer (memoryLeak allocation, forkBomb duplication) */
+  workTimer: number;
+  /** additive: spawn cell (daemons flee toward it with a stolen payload) */
+  spawnX: number;
+  spawnY: number;
+}
+
+/** A floor work site: data node (mine), job station (execute), or I/O port (deliver). */
+export interface WorkSite {
+  id: number;
+  kind: WorkSiteKind;
+  x: number;
+  y: number;
+  /** dataNode: full channel turns; jobStation: work volume W; ioPort: 1 */
+  totalUnits: number;
+  remainingUnits: number;
+  /** dataNode: original Data yield (corruption is derived from `corrupted`) */
+  yieldData: number;
+  /** exact credit payout on completion / delivery */
+  payoutCredits: Amount;
+  /** bitFlip corruption hits absorbed (4 uncorrected flips zero a node) */
+  corrupted: number;
+  /** enemy id squatting the site (zombieProcess); null when usable */
+  squattedBy: number | null;
+  /** counts toward quota; corrupted-to-zero and lost payloads also resolve */
+  resolved: boolean;
+}
+
+/** A haulable payload bound for its `portId` ioPort site. */
+export interface Payload {
+  id: number;
+  x: number;
+  y: number;
+  portId: number;
+  payoutCredits: Amount;
+  heldBy: PayloadHolder;
+}
+
+export interface RunQuota {
+  required: number;
+  done: number;
 }
 
 export interface FloorItem {
@@ -145,12 +217,31 @@ export interface RunState {
   /** simulated time this run has consumed (hardware-derived, not wall clock) */
   elapsedMs: number;
   credits: Amount;
+  /** @deprecated v1 coreDump salvage; v2 folds all Data into `dataMined` */
   salvageData: number;
+  /** Data mined from nodes (plus coreDump salvage); the only banked Data source */
+  dataMined: number;
   kills: number;
   hero: HeroState;
   floor: FloorState;
   enemies: Enemy[];
   items: FloorItem[];
+  /** work sites on the current floor */
+  sites: WorkSite[];
+  /** haulable payloads on the current floor */
+  payloads: Payload[];
+  /** leak cell indices (impassable until garbage-collected) */
+  leaks: number[];
+  /** the bus gate reuses `stairsLocked` until `quota.done >= quota.required` */
+  quota: RunQuota;
+  /** turns of overclock remaining (0 = off): x0.5 msPerTurn, +2 heat, +4 W */
+  overclockTurns: number;
+  /** additive: in-progress leak GC channel (2 turns per cell) */
+  gcChannel: { index: number; remaining: number } | null;
+  /** additive per-run work counters (banked into HubStats) */
+  sitesCompleted: number;
+  payloadsDelivered: number;
+  leaksCollected: number;
   /** ring buffer of the most recent events (<= 64), ascending seq */
   events: RunEvent[];
   nextEventSeq: number;
@@ -177,6 +268,8 @@ export interface RunSummary {
   elapsedMs: number;
   newMaxDepth: boolean;
   aborted: boolean;
+  /** additive v2: Data mined during the run (campaign predicates read it) */
+  dataMined: number;
 }
 
 export interface HubStats {
@@ -190,6 +283,14 @@ export interface HubStats {
   bossKills: number;
   /** runs completed (simulated + extrapolated) by offline advances */
   offlineRuns: number;
+  /** v2 campaign fuel: work sites completed across all runs */
+  sitesCompleted: number;
+  /** v2 campaign fuel: Data mined across all runs */
+  dataMined: number;
+  /** v2 campaign fuel: payloads delivered across all runs */
+  payloadsDelivered: number;
+  /** v2 campaign fuel: leak cells garbage-collected across all runs */
+  leaksCollected: number;
 }
 
 export interface HubState {
@@ -257,7 +358,7 @@ export interface CampaignState {
 }
 
 export interface GameState {
-  version: 1;
+  version: 2;
   hub: HubState;
   run: RunState | null;
   rng: Xoshiro128State;
@@ -289,7 +390,11 @@ export type HeroAction =
   | { type: "wait" }
   | { type: "useItem"; slot: number }
   | { type: "descend" }
-  | { type: "forceDescend" };
+  | { type: "forceDescend" }
+  /** context-sensitive: start/continue channel, execute, pick up, deliver, GC a leak */
+  | { type: "interact" }
+  /** 10 turns of x0.5 msPerTurn at +2 heat/turn and +4 W draw */
+  | { type: "overclock" };
 
 /** Hub-derived numbers the turn resolver needs. Pure function of HubState. */
 export interface HeroStats {
@@ -302,11 +407,23 @@ export interface HeroStats {
   daemonSlots: number;
   activeDaemons: ResearchId[];
   fovRadius: number;
-  /** exact multiplier applied to kill credits, e.g. "1.25" */
+  /** exact multiplier applied to kill credits (always "1" in v2; kept for compat) */
   killCreditMultiplier: Amount;
   startingRevives: number;
   /** watts drawn by active daemons (items add 1 W each at runtime) */
   daemonDraw: number;
   zombiesRevive: boolean;
+  /** doubles controller-floor Data (coreDumpAnalysis) */
   coreDumpMultiplier: number;
+  // ---- v2 work stats --------------------------------------------------------
+  /** raw cache hardware level: +1 job unit/turn, -floor(level/2) mine channel turns */
+  cacheLevel: number;
+  /** exact multiplier on work payouts (jobs, hauls, GC), e.g. "1.25" for bugBounty */
+  workPayoutMultiplier: Amount;
+  /** DMA Controller research: hauling no longer doubles the fault alert radius */
+  dmaController: boolean;
+  /** Branch Predictor research: the first hit during a channel does not reset it */
+  branchPredictor: boolean;
+  /** ECC Memory research: bitFlip corruption per hit is halved */
+  eccMemory: boolean;
 }

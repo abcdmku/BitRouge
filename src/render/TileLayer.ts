@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import type { RenderSnapshot, TileKindValue } from "../game/renderSnapshot";
 import { TileKind } from "../game/renderSnapshot";
 import { DEPTH, FOG_REMEMBERED, FOG_UNEXPLORED, FOG_VISIBLE, TEX_TILESET, TILE } from "./constants";
-import { BIOME_TINTS, resolveSprite, SOURCE_TEXTURE, type FrameLookup, type SemanticKey, type SpriteRef } from "./assets/manifest";
+import { resolveSprite, SOURCE_TEXTURE, TIER_TINTS, type FrameLookup, type SemanticKey, type SpriteRef } from "./assets/manifest";
 import { getTilesetInfo, type TilesetInfo } from "./assets/preload";
 import { applyRef, ensurePlaceholder } from "./EntityView";
 
@@ -44,11 +44,13 @@ export function pickGroundTile(kind: TileKindValue, nb: Neighbours, hash: number
     case TileKind.door:
       return "door";
     case TileKind.stairsDown:
+    case TileKind.vent:
+      // Vent cells get the animated overlay on a plain floor base; decor vents
+      // were retired so only mechanical vents (heat dissipation) read as vents.
       return "floor";
     default: {
       const r = hash % 100;
-      if (r < 6) return "vent";
-      if (r < 16) return "floor_cable";
+      if (r < 12) return "floor_cable";
       return "floor";
     }
   }
@@ -78,6 +80,8 @@ export class TileLayer {
   private overlays: Phaser.GameObjects.Sprite[] = [];
   private lastVisible: readonly boolean[] | null = null;
   private lastExplored: readonly boolean[] | null = null;
+  /** The bus-gate (exit) overlay; tinted by lock state. */
+  private gate: Phaser.GameObjects.Sprite | null = null;
 
   constructor(private scene: Phaser.Scene) {
     if (!scene.textures.exists(FOG_TEX)) {
@@ -110,8 +114,8 @@ export class TileLayer {
     this.ground = ground;
     this.fog = fog;
 
-    // Biome wash over the ground layer; "network" (and unknown) stays untinted.
-    const tints = BIOME_TINTS[snap.biome] ?? BIOME_TINTS.network;
+    // Memory-tier wash over the ground layer (§2 palettes).
+    const tints = TIER_TINTS[snap.tier] ?? TIER_TINTS.cache;
     const tinted = tints.floor !== 0xffffff || tints.wall !== 0xffffff;
 
     const isFloor = (x: number, y: number): boolean => {
@@ -143,7 +147,10 @@ export class TileLayer {
         } else if (!ground && kind !== "rock") {
           this.addOverlay(GROUND_KEY[kind], x, y, lookup, DEPTH.floor, hash >>> 8);
         }
-        if (t === TileKind.stairsDown) this.addOverlay("port_down", x, y, lookup, DEPTH.hazard);
+        if (t === TileKind.stairsDown) {
+          this.gate = this.addOverlay("port_down", x, y, lookup, DEPTH.hazard);
+        }
+        if (t === TileKind.vent) this.addVent(x, y, lookup);
         const f = fog.putTileAt(FOG_GID, x, y);
         f.alpha = FOG_UNEXPLORED;
       }
@@ -152,13 +159,14 @@ export class TileLayer {
     for (const h of snap.hazards) {
       this.addOverlay(`hazard_${h.kind}` as SemanticKey, h.index % width, Math.floor(h.index / width), lookup, DEPTH.hazard);
     }
+    this.setGateLocked(snap.stairsLocked);
     this.lastVisible = null;
     this.lastExplored = null;
     this.updateFog(snap);
   }
 
   /** Animated/static sprite sitting on a cell (hazards, the exit port, or tiles the tileset lacks). */
-  private addOverlay(key: SemanticKey, x: number, y: number, lookup: FrameLookup, depth: number, variant = 0): void {
+  private addOverlay(key: SemanticKey, x: number, y: number, lookup: FrameLookup, depth: number, variant = 0): Phaser.GameObjects.Sprite {
     const ref = resolveSprite(key, lookup, variant);
     const s = this.scene.add.sprite(x * TILE + TILE / 2, y * TILE + TILE / 2, ref?.texture ?? "placeholderpx", ref?.frame);
     applyRef(s, ref);
@@ -166,6 +174,29 @@ export class TileLayer {
     const idle = ref?.clips.idle;
     if (idle && this.scene.anims.exists(idle)) s.play(idle);
     this.overlays.push(s);
+    return s;
+  }
+
+  /** Vent tile: shimmering exhaust overlay so dissipation cells read as alive. */
+  private addVent(x: number, y: number, lookup: FrameLookup): void {
+    const s = this.addOverlay("tile_vent", x, y, lookup, DEPTH.hazard, cellHash(x, y) >>> 8);
+    s.setTint(0x9fe8ff);
+    this.scene.tweens.add({
+      targets: s,
+      alpha: 0.55,
+      duration: 650 + (cellHash(x, y) % 300),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  /**
+   * Bus gate (exit) lock state: latched = red, open = green (§7 reuses
+   * stairsLocked/stairsUnlocked for the quota gate).
+   */
+  setGateLocked(locked: boolean): void {
+    this.gate?.setTint(locked ? 0xff5566 : 0x8cff9a);
   }
 
   updateFog(snap: RenderSnapshot): void {
@@ -188,6 +219,7 @@ export class TileLayer {
   destroy(): void {
     for (const s of this.overlays) s.destroy();
     this.overlays = [];
+    this.gate = null;
     this.ground?.destroy();
     this.fog?.destroy();
     this.map?.destroy();

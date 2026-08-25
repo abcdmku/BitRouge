@@ -1,5 +1,5 @@
 import { amount, amountMultiply, amountPow, amountRound, type Amount } from "./amount";
-import { normalizeAdvanceTimeMs } from "./timeGrid";
+import { getTierMsPerTurn } from "./dungeon/tiers";
 import type { HardwareKind, HubState } from "./types";
 
 export interface HardwareDefinition {
@@ -21,9 +21,13 @@ export const getPowerBudget = (level: number) => 10 * Math.pow(1.7, level - 1);
 export const getHeatDissipation = (level: number) => 1 + level;
 export const getDaemonSlots = (level: number) => 1 + level;
 
-/** Auto-turn cadence: deeper floors carry more work per turn; faster clocks resolve it sooner. */
+/**
+ * Auto-turn cadence from the memory hierarchy: msPerTurn = 1000 *
+ * cyclesPerTurn(tier) / clockHz (cache 2, ram 5, disk 12, kernel 8). Replaces
+ * the v1 smooth 1.35^depth curve; the table lives in dungeon/tiers.ts.
+ */
 export const getMsPerTurn = (clockHz: number, depth: number) =>
-  normalizeAdvanceTimeMs((1000 * (2 * Math.pow(1.35, Math.max(1, depth) - 1))) / clockHz);
+  getTierMsPerTurn(clockHz, Math.max(1, depth));
 
 const fmt = (value: number, digits = 2) =>
   Number.isInteger(value) ? String(value) : value.toFixed(digits);

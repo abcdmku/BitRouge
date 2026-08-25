@@ -70,7 +70,7 @@ export function ResearchPanel({ visible, dispatch }: ResearchPanelProps) {
   const done = visible.research.filter((r) => r.completed);
   return (
     <div className="panel">
-      <p className="panel__hint">Research costs Data — banked credits ÷ 10, salvage, and +5 per new max depth.</p>
+      <p className="panel__hint">Research costs Data — mined from data nodes on the floor, +5 per new max depth.</p>
       <Group title="Available" rows={available} dispatch={dispatch} />
       <Group title="Locked" rows={locked} dispatch={dispatch} />
       <Group title="Done" rows={done} dispatch={dispatch} />

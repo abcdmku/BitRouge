@@ -9,12 +9,25 @@ export type Facing = "l" | "r";
 export const TileKind = {
   wall: 0,
   floor: 1,
+  /** gate (door): corridor/bank mouth */
   door: 2,
+  /** bus gate (exit / flush); keeps value 3 with new art */
   stairsDown: 3,
+  /** additive v2: vent tile, +3 heat dissipation while stood on */
+  vent: 4,
 } as const;
 export type TileKindValue = (typeof TileKind)[keyof typeof TileKind];
 
 export type HazardKind = "hotTile" | "overloadPlate" | "corruptedSector" | "brownout";
+
+/** Memory tier by depth band: 1-3 cache, 4-7 ram, 8-11 disk, 12+ kernel. */
+export type Tier = "cache" | "ram" | "disk" | "kernel";
+
+/** v2 work-site kinds: data nodes (mine), job stations (execute), I/O ports (deliver). */
+export type WorkSiteKind = "dataNode" | "jobStation" | "ioPort";
+
+/** Who holds a payload: on the floor, the hero, a daemon (its enemy id), or lost. */
+export type PayloadHolder = "floor" | "hero" | number | "lost";
 
 export type EnemyKind =
   | "bitFlip"
@@ -26,7 +39,10 @@ export type EnemyKind =
   | "zombieProcess"
   | "kernelPanic";
 
-/** Depth band theme: floors 1-5 network, 6-10 storage, 11+ kernel. */
+/**
+ * @deprecated v1 depth-band theme, replaced by `Tier`. Kept exported only so
+ * v1 consumers (selectors/render) keep compiling until workstream C lands.
+ */
 export type Biome = "network" | "storage" | "kernel";
 
 export type ItemKind = "patch" | "hotfix" | "cacheLine" | "heatsink" | "checkpoint" | "coreDump";
@@ -42,6 +58,38 @@ export interface RenderHero {
   heat: number;
   throttled: boolean;
   anim: EntityAnim;
+  /** site id the hero is channeling/executing this turn, null when idle */
+  channeling: number | null;
+  /** payload id carried by the hero, null when not hauling */
+  carrying: number | null;
+}
+
+/** Work site as the renderer sees it (progress rings, squat markers). */
+export interface RenderSite {
+  id: number;
+  kind: WorkSiteKind;
+  x: number;
+  y: number;
+  totalUnits: number;
+  remainingUnits: number;
+  yieldData: number;
+  /** exact credit payout on completion (Amount string) */
+  payoutCredits: string;
+  /** bitFlip corruption hits absorbed so far */
+  corrupted: number;
+  /** enemy id squatting the site (zombieProcess), null when usable */
+  squattedBy: number | null;
+  resolved: boolean;
+}
+
+/** Payload as the renderer sees it; `heldBy` lets the sprite attach to a carrier. */
+export interface RenderPayload {
+  id: number;
+  x: number;
+  y: number;
+  /** id of the ioPort site it must reach */
+  portId: number;
+  heldBy: PayloadHolder;
 }
 
 export interface RenderEntity {
@@ -82,9 +130,24 @@ export type RunEvent =
   | { seq: number; turn: number; kind: "deadlockPenalty"; creditsLost: string }
   | { seq: number; turn: number; kind: "descended"; depth: number }
   | { seq: number; turn: number; kind: "controlChanged"; control: "auto" | "manual" }
-  // Additive: kernelPanic boss floors (every 5th depth).
+  // Additive: kernelPanic controller floors + the v2 quota gate. `stairsLocked`
+  // and `stairsUnlocked` are reused verbatim for the quota-locked bus gate.
   | { seq: number; turn: number; kind: "stairsLocked" }
-  | { seq: number; turn: number; kind: "stairsUnlocked" };
+  | { seq: number; turn: number; kind: "stairsUnlocked" }
+  // Additive v2: work sites, payload hauls, leaks, overclock, quota.
+  | { seq: number; turn: number; kind: "siteChanneled"; siteId: number; remaining: number }
+  | { seq: number; turn: number; kind: "siteCompleted"; siteId: number; siteKind: WorkSiteKind; credits: string; data: number }
+  | { seq: number; turn: number; kind: "siteCorrupted"; siteId: number }
+  | { seq: number; turn: number; kind: "siteSquatted"; siteId: number; byId: number }
+  | { seq: number; turn: number; kind: "payloadTaken"; id: number }
+  | { seq: number; turn: number; kind: "payloadStolen"; id: number; byId: number }
+  | { seq: number; turn: number; kind: "payloadDelivered"; id: number; credits: string }
+  | { seq: number; turn: number; kind: "payloadLost"; id: number }
+  | { seq: number; turn: number; kind: "leakSpawned"; index: number }
+  | { seq: number; turn: number; kind: "leakCollected"; index: number; credits: string }
+  | { seq: number; turn: number; kind: "overclocked"; on: boolean }
+  | { seq: number; turn: number; kind: "quotaProgress"; done: number; required: number }
+  | { seq: number; turn: number; kind: "floorScrambled" };
 
 export interface RenderSnapshot {
   /** run seed; the scene rebuilds its tilemap when runId or depth changes */
@@ -107,10 +170,21 @@ export interface RenderSnapshot {
   turnProgress: number;
   /** ring buffer of the most recent events (≤ 64), ascending seq */
   events: readonly RunEvent[];
-  /** additive: depth-band theme for palette/tint selection */
-  biome: Biome;
-  /** additive: boss floor gate — stairs refuse `descend` until the boss dies */
+  /**
+   * Memory tier for palette/tint selection. BREAKING (approved): replaces the
+   * v1 `biome` field.
+   */
+  tier: Tier;
+  /** the bus gate refuses `descend` until the quota is met (and the controller dies) */
   stairsLocked: boolean;
+  // ---- additive v2 fields ---------------------------------------------------
+  sites: readonly RenderSite[];
+  payloads: readonly RenderPayload[];
+  /** leak cell indices (impassable until garbage-collected) */
+  leaks: readonly number[];
+  quota: { required: number; done: number };
+  /** turns of overclock remaining (0 = off) */
+  overclockTurns: number;
 }
 
 /** Commands the renderer / input layer may dispatch. The sim's GameAction is a superset. */
@@ -121,7 +195,10 @@ export type RenderCommand =
   | { type: "heroWait" }
   | { type: "useItem"; slot: number }
   | { type: "descend" }
-  | { type: "heroPathTo"; x: number; y: number };
+  | { type: "heroPathTo"; x: number; y: number }
+  // BREAKING (approved) v2 additions:
+  | { type: "interact" }
+  | { type: "overclock" };
 
 // ---------------------------------------------------------------------------
 // Implementation (additive; the types above are the committed contract).
@@ -207,6 +284,8 @@ export const deriveRenderSnapshot = (state: GameState): RenderSnapshot | null =>
       heat: run.hero.heat,
       throttled: run.hero.throttled,
       anim: heroAnimFor(run),
+      channeling: run.hero.channelSiteId,
+      carrying: run.hero.carryingPayloadId,
     },
     entities: run.enemies.map((enemy) => ({
       id: enemy.id,
@@ -224,11 +303,38 @@ export const deriveRenderSnapshot = (state: GameState): RenderSnapshot | null =>
     msPerTurn,
     turnProgress: msPerTurn > 0 ? Math.min(1, Math.max(0, run.turnAccumulatorMs / msPerTurn)) : 0,
     events: run.events,
-    biome: getBiome(run.depth),
+    tier: getTier(run.depth),
     stairsLocked: run.floor.stairsLocked,
+    sites: run.sites.map((site) => ({
+      id: site.id,
+      kind: site.kind,
+      x: site.x,
+      y: site.y,
+      totalUnits: site.totalUnits,
+      remainingUnits: site.remainingUnits,
+      yieldData: site.yieldData,
+      payoutCredits: site.payoutCredits,
+      corrupted: site.corrupted,
+      squattedBy: site.squattedBy,
+      resolved: site.resolved,
+    })),
+    payloads: run.payloads.map((payload) => ({
+      id: payload.id,
+      x: payload.x,
+      y: payload.y,
+      portId: payload.portId,
+      heldBy: payload.heldBy,
+    })),
+    leaks: run.leaks,
+    quota: { required: run.quota.required, done: run.quota.done },
+    overclockTurns: run.overclockTurns,
   };
 };
 
-/** Biome by depth band: 1-5 network, 6-10 storage, 11+ kernel. */
+/** Memory tier by depth band: 1-3 cache, 4-7 ram, 8-11 disk, 12+ kernel. */
+export const getTier = (depth: number): Tier =>
+  depth <= 3 ? "cache" : depth <= 7 ? "ram" : depth <= 11 ? "disk" : "kernel";
+
+/** @deprecated v1 depth-band theme; use `getTier`. Kept for v1 consumers only. */
 export const getBiome = (depth: number): Biome =>
   depth <= 5 ? "network" : depth <= 10 ? "storage" : "kernel";

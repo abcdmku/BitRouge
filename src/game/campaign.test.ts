@@ -20,12 +20,12 @@ const withWatchdog = (state: GameState): GameState => ({
 });
 
 describe("campaign", () => {
-  it("defines 3 chapters × 4 objectives with transmissions and blocked reasons", () => {
+  it("defines 3 chapters × 5 objectives with transmissions and blocked reasons", () => {
     expect(campaignChapterDefinitions).toHaveLength(3);
-    expect(campaignObjectiveDefinitions).toHaveLength(12);
+    expect(campaignObjectiveDefinitions).toHaveLength(15);
     const ids = new Set(campaignObjectiveDefinitions.map((definition) => definition.id));
     for (const chapter of campaignChapterDefinitions) {
-      expect(chapter.objectiveIds).toHaveLength(4);
+      expect(chapter.objectiveIds).toHaveLength(5);
       for (const id of chapter.objectiveIds) expect(ids.has(id)).toBe(true);
     }
     for (const definition of campaignObjectiveDefinitions) {
@@ -106,7 +106,7 @@ describe("campaign", () => {
     expect(visibleFresh.campaign.currentObjective?.id).toBe("boot:first-deploy");
     expect(visibleFresh.campaign.currentObjective?.blockedReason).toBe("Press Deploy.");
     expect(visibleFresh.campaign.completedCount).toBe(0);
-    expect(visibleFresh.campaign.totalCount).toBe(12);
+    expect(visibleFresh.campaign.totalCount).toBe(15);
     expect(visibleFresh.campaignTransmissions).toEqual([]);
     expect(visibleFresh.creditsPerSecond).toBe(0);
 
@@ -147,7 +147,13 @@ describe("campaign", () => {
     state = {
       ...state,
       campaign: {
-        completedObjectiveIds: ["boot:first-deploy", "boot:first-kill", "boot:first-bank", "boot:first-hardware"],
+        completedObjectiveIds: [
+          "boot:first-deploy",
+          "boot:first-kill",
+          "boot:first-bank",
+          "boot:first-hardware",
+          "boot:first-site",
+        ],
         log: [],
         nextLogSeq: 1,
       },

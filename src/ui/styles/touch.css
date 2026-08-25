@@ -91,3 +91,45 @@
   color: #8cff9a;
   border-color: #22c55e;
 }
+
+/* Context interact: lights cyan when something is in reach. */
+.touch__interact:disabled {
+  color: #4a5578;
+  border-color: #2a3454;
+  background: #101527;
+}
+
+.touch__interact--live {
+  color: #07080f;
+  background: #6ff2ff;
+  border-color: #9ff7ff;
+  font-weight: 700;
+}
+
+/* Overclock: cyan idle, amber pulse when hot, lit while active. */
+.touch__oc {
+  color: #6ff2ff;
+  border-color: #1e6f80;
+}
+
+.touch__oc--hot {
+  color: #ffc266;
+  border-color: #f59e0b;
+  animation: touch-oc-hot 900ms ease-in-out infinite alternate;
+}
+
+.touch__oc--active,
+.touch__oc--active:disabled {
+  color: #07080f;
+  background: #9fe8ff;
+  border-color: #6ff2ff;
+}
+
+@keyframes touch-oc-hot {
+  from {
+    box-shadow: 4px 4px 0 #07080f;
+  }
+  to {
+    box-shadow: 4px 4px 0 #07080f, 0 0 10px 2px rgba(245, 158, 11, 0.5);
+  }
+}

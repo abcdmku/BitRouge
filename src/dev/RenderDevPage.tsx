@@ -5,12 +5,18 @@ import { TouchControls } from "../ui/TouchControls";
 import { useKeyboard } from "../ui/hooks/useKeyboard";
 import {
   createSampleSnapshot,
+  sampleCorrupt,
   sampleDescend,
   sampleEnemiesStep,
   sampleHazard,
   sampleHurt,
+  sampleInteract,
+  sampleLeakGrow,
   sampleMove,
+  sampleOverclock,
   sampleRevealAll,
+  sampleScramble,
+  sampleSteal,
   sampleToggleControl,
 } from "./sampleSnapshot";
 
@@ -33,6 +39,10 @@ export function RenderDevPage() {
           return sampleMove(s, cmd.dir);
         case "heroWait":
           return sampleEnemiesStep(s);
+        case "interact":
+          return sampleInteract(s);
+        case "overclock":
+          return sampleOverclock(s);
         case "descend":
           return sampleDescend(s);
         case "takeControl":
@@ -57,6 +67,12 @@ export function RenderDevPage() {
         {mounted ? <DungeonView snapshot={snap} onCommand={onCommand} /> : null}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 6, fontSize: 10 }}>
+        <button type="button" onClick={() => mutate(sampleInteract)}>interact</button>
+        <button type="button" onClick={() => mutate(sampleOverclock)}>overclock</button>
+        <button type="button" onClick={() => mutate(sampleLeakGrow)}>leak grows</button>
+        <button type="button" onClick={() => mutate(sampleSteal)}>daemon steals</button>
+        <button type="button" onClick={() => mutate(sampleCorrupt)}>bitflip corrupts</button>
+        <button type="button" onClick={() => mutate(sampleScramble)}>panic scramble</button>
         <button type="button" onClick={() => mutate(sampleEnemiesStep)}>enemies step</button>
         <button type="button" onClick={() => mutate(sampleHurt)}>hero hurt</button>
         <button type="button" onClick={() => mutate(sampleHazard)}>hazard</button>
@@ -67,10 +83,19 @@ export function RenderDevPage() {
         <button type="button" onClick={() => setSnap(null)}>null snapshot</button>
         <button type="button" onClick={() => setMounted((m) => !m)}>{mounted ? "unmount" : "mount"}</button>
         <span style={{ color: "#7f8bb3" }}>
-          {snap ? `d${snap.depth} t${snap.turn} ${snap.control} hp${snap.hero.hp}/${snap.hero.maxHp} @${snap.hero.x},${snap.hero.y}` : "no run"}
+          {snap
+            ? `d${snap.depth} t${snap.turn} ${snap.control} hp${snap.hero.hp}/${snap.hero.maxHp} @${snap.hero.x},${snap.hero.y} quota ${snap.quota.done}/${snap.quota.required}${snap.stairsLocked ? " locked" : " open"}${snap.overclockTurns > 0 ? ` OC${snap.overclockTurns}` : ""}`
+            : "no run"}
         </span>
       </div>
-      <TouchControls onCommand={onCommand} control={snap?.control ?? null} forceShow />
+      <TouchControls
+        onCommand={onCommand}
+        control={snap?.control ?? null}
+        interactLabel={snap ? "USE" : null}
+        overclockTurns={snap?.overclockTurns ?? 0}
+        heat={snap?.hero.heat ?? 0}
+        forceShow
+      />
       <pre style={{ margin: 0, padding: "0 6px 6px", fontSize: 9, color: "#7f8bb3", maxHeight: 80, overflow: "auto" }}>
         {log.join("\n")}
       </pre>

@@ -4,6 +4,7 @@ import { chooseAutoAction } from "./dungeon/autoExplore";
 import { isEnemyActive } from "./dungeon/draft";
 import { dirTo, toIndex } from "./dungeon/grid";
 import { resolveTurn } from "./dungeon/turn";
+import { OVERCLOCK_SPEED_FACTOR } from "./dungeon/worksites";
 import { bankIntoHub } from "./economy";
 import { getMsPerTurn } from "./hardware";
 import { deriveHeroStats } from "./hero";
@@ -31,8 +32,14 @@ interface Tally {
   durations: number[];
 }
 
+/** Effective cadence for a run: tier latency, halved while overclocked. */
+export const getEffectiveMsPerTurn = (clockHz: number, run: RunState) => {
+  const base = getMsPerTurn(clockHz, run.depth);
+  return run.overclockTurns > 0 ? normalizeAdvanceTimeMs(base * OVERCLOCK_SPEED_FACTOR) : base;
+};
+
 export const getRunMsPerTurn = (state: GameState, run: RunState) =>
-  getMsPerTurn(deriveHeroStats(state.hub).clockHz, run.depth);
+  getEffectiveMsPerTurn(deriveHeroStats(state.hub).clockHz, run);
 
 /** A run consumes cadence in auto mode, or in manual mode while a queued path is pending. */
 export const isRunTicking = (run: RunState | null): run is RunState =>
@@ -85,7 +92,7 @@ const tick = (input: GameState, stepMs: number, tally: Tally): GameState => {
       elapsedMs: normalizeAdvanceTimeMs(state.run.elapsedMs + stepMs),
     };
     for (;;) {
-      const msPerTurn = getMsPerTurn(stats.clockHz, run.depth);
+      const msPerTurn = getEffectiveMsPerTurn(stats.clockHz, run);
       if (run.turnAccumulatorMs < msPerTurn) break;
       run = { ...run, turnAccumulatorMs: normalizeAdvanceTimeMs(run.turnAccumulatorMs - msPerTurn) };
       run = stepRunTurn(run, stats);

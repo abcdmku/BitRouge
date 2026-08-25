@@ -31,7 +31,12 @@ export function commandsForKey(key: string, control: "auto" | "manual" | null): 
   }
   if (key === "." || key === " ") return needsControl ? [{ type: "takeControl" }, { type: "heroWait" }] : [{ type: "heroWait" }];
   if (key >= "1" && key <= "6") return [{ type: "useItem", slot: Number(key) - 1 }];
-  if (key === ">" || key === "Enter") return needsControl ? [{ type: "takeControl" }, { type: "descend" }] : [{ type: "descend" }];
+  // Context interact: mine / execute / pick up / deliver / GC.
+  if (key === "e" || key === "E" || key === "Enter") {
+    return needsControl ? [{ type: "takeControl" }, { type: "interact" }] : [{ type: "interact" }];
+  }
+  if (key === "o" || key === "O") return [{ type: "overclock" }];
+  if (key === ">") return needsControl ? [{ type: "takeControl" }, { type: "descend" }] : [{ type: "descend" }];
   if (key === "Tab" || key === "m" || key === "M") {
     return [{ type: control === "manual" ? "releaseControl" : "takeControl" }];
   }

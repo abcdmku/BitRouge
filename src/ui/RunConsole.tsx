@@ -4,6 +4,7 @@ import {
   formatAmount,
   hazardNames,
   itemDefinitions,
+  siteLabelById,
   type GameState,
   type RunEvent,
   type RunState,
@@ -36,7 +37,7 @@ export const lineForEvent = (event: RunEvent, run: RunState): Omit<LogLine, "id"
     case "heroHurt":
       return { turn, tone: "danger", text: `-${event.damage} HP (${enemyName(run, event.sourceId)}) — ${event.hp} left` };
     case "heroDied":
-      return { turn, tone: "danger", text: `SEGFAULT — ${event.cause}` };
+      return { turn, tone: "danger", text: `FATAL — ${event.cause}` };
     case "heroRevived":
       return { turn, tone: "data", text: "checkpoint restored — process revived" };
     case "enemySpawned":
@@ -53,8 +54,6 @@ export const lineForEvent = (event: RunEvent, run: RunState): Omit<LogLine, "id"
         : { turn, tone: "muted", text: "throttle cleared" };
     case "tripped":
       return { turn, tone: "warn", text: "PSU TRIP — turn skipped" };
-    case "deadlockPenalty":
-      return { turn, tone: "danger", text: `DEADLOCK PENALTY -${formatAmount(event.creditsLost)} cr` };
     case "descended":
       // The sim emits a descended event on deploy; the DEPLOYED line covers it.
       if (event.turn === 0) return null;
@@ -62,9 +61,45 @@ export const lineForEvent = (event: RunEvent, run: RunState): Omit<LogLine, "id"
     case "controlChanged":
       return { turn, tone: "muted", text: `control: ${event.control === "manual" ? "MANUAL" : "AUTO-EXPLORE"}` };
     case "stairsLocked":
-      return { turn, tone: "danger", text: "ACCESS DENIED — kernel panic active" };
+      return { turn, tone: "danger", text: "BUS GATE LATCHED — quota incomplete" };
     case "stairsUnlocked":
-      return { turn, tone: "ok", text: "stairs unlocked" };
+      return { turn, tone: "ok", text: "BUS GATE OPEN — flush ready" };
+    // ---- v2 work events (spec §7 syslog lines) ----
+    case "siteCompleted":
+      return event.siteKind === "dataNode"
+        ? { turn, tone: "data", text: `${siteLabelById(run, event.siteId)} mined: +${event.data} D` }
+        : { turn, tone: "ok", text: `${siteLabelById(run, event.siteId)} done: +${formatAmount(event.credits)} cr` };
+    case "siteCorrupted":
+      return { turn, tone: "danger", text: `${siteLabelById(run, event.siteId)} corrupted — yield −25%, channel reset` };
+    case "siteSquatted":
+      return { turn, tone: "warn", text: `${siteLabelById(run, event.siteId)} squatted — resource held by zombie` };
+    case "payloadTaken":
+      return { turn, tone: "data", text: "payload picked up — deliver to its port" };
+    case "payloadStolen":
+      return { turn, tone: "danger", text: "PAYLOAD STOLEN — kill the daemon before it despawns" };
+    case "payloadDelivered": {
+      const payload = run.payloads.find((p) => p.id === event.id);
+      const port = payload ? ` to ${siteLabelById(run, payload.portId)}` : "";
+      return { turn, tone: "ok", text: `payload delivered${port}: +${formatAmount(event.credits)} cr` };
+    }
+    case "payloadLost":
+      return { turn, tone: "warn", text: "payload lost — task voided for quota" };
+    case "leakSpawned":
+      return { turn, tone: "warn", text: "OOM — memory leak walled a cell" };
+    case "leakCollected":
+      return { turn, tone: "ok", text: `leak GC'd: +${formatAmount(event.credits)} cr` };
+    case "overclocked":
+      return event.on
+        ? { turn, tone: "warn", text: "OVERCLOCK — 2× clock for 10 turns, heat rising" }
+        : { turn, tone: "muted", text: "overclock window closed" };
+    case "quotaProgress":
+      return {
+        turn,
+        tone: event.done >= event.required ? "ok" : "sys",
+        text: `quota ${event.done}/${event.required}${event.done >= event.required ? " — flush ready" : ""}`,
+      };
+    case "floorScrambled":
+      return { turn, tone: "danger", text: "KERNEL PANIC — floor re-carved, progress preserved" };
     default:
       return null;
   }

@@ -1,9 +1,25 @@
-import { amount, amountClampMin, type Amount } from "./amount";
+import {
+  amount,
+  amountAdd,
+  amountClampMin,
+  amountDivide,
+  amountFloor,
+  amountToSafeNumber,
+  type Amount,
+} from "./amount";
 import { normalizeCampaignState } from "./campaign";
 import { EVENT_RING_SIZE } from "./dungeon/draft";
 import { HARDWARE_MAX_LEVEL } from "./hardware";
 import { createInitialGameState, createInitialHubState } from "./initialState";
-import { TileKind, type EnemyKind, type HazardKind, type ItemKind, type RunEvent } from "./renderSnapshot";
+import {
+  TileKind,
+  type EnemyKind,
+  type HazardKind,
+  type ItemKind,
+  type PayloadHolder,
+  type RunEvent,
+  type WorkSiteKind,
+} from "./renderSnapshot";
 import { isResearchId } from "./research";
 import { normalizeRngState } from "./rng";
 import {
@@ -15,14 +31,16 @@ import {
   type HardwareKind,
   type HeroState,
   type HubState,
+  type Payload,
   type Point,
   type ResearchId,
   type RunState,
   type RunSummary,
+  type WorkSite,
 } from "./types";
 import { normalizeWatchdogState } from "./watchdog";
 
-export const SAVE_VERSION = 1 as const;
+export const SAVE_VERSION = 2 as const;
 
 export interface SaveEnvelope {
   version: typeof SAVE_VERSION;
@@ -82,11 +100,13 @@ export const serializeSave = (state: GameState, savedAtMs: number) =>
 const ENEMY_KINDS: readonly EnemyKind[] = ["bitFlip", "nullPointer", "memoryLeak", "deadlock", "forkBomb", "daemon", "zombieProcess", "kernelPanic"];
 const ITEM_KINDS: readonly ItemKind[] = ["patch", "hotfix", "cacheLine", "heatsink", "checkpoint", "coreDump"];
 const HAZARD_KINDS: readonly HazardKind[] = ["hotTile", "overloadPlate", "corruptedSector", "brownout"];
+const SITE_KINDS: readonly WorkSiteKind[] = ["dataNode", "jobStation", "ioPort"];
 const TILE_VALUES = new Set<number>(Object.values(TileKind));
 
 const isEnemyKind = (value: unknown): value is EnemyKind => ENEMY_KINDS.includes(value as EnemyKind);
 const isItemKind = (value: unknown): value is ItemKind => ITEM_KINDS.includes(value as ItemKind);
 const isHazardKind = (value: unknown): value is HazardKind => HAZARD_KINDS.includes(value as HazardKind);
+const isSiteKind = (value: unknown): value is WorkSiteKind => SITE_KINDS.includes(value as WorkSiteKind);
 
 const normalizeSummary = (value: unknown): RunSummary | null => {
   if (!isRecord(value)) return null;
@@ -102,6 +122,7 @@ const normalizeSummary = (value: unknown): RunSummary | null => {
     elapsedMs: Math.max(0, toFiniteNumber(value.elapsedMs, 0)),
     newMaxDepth: value.newMaxDepth === true,
     aborted: value.aborted === true,
+    dataMined: toInt(value.dataMined, 0),
   };
 };
 
@@ -133,6 +154,10 @@ const normalizeHub = (value: unknown): HubState => {
       deadlocksSurvived: toInt(statsSource.deadlocksSurvived, 0),
       bossKills: toInt(statsSource.bossKills, 0),
       offlineRuns: toInt(statsSource.offlineRuns, 0),
+      sitesCompleted: toInt(statsSource.sitesCompleted, 0),
+      dataMined: toInt(statsSource.dataMined, 0),
+      payloadsDelivered: toInt(statsSource.payloadsDelivered, 0),
+      leaksCollected: toInt(statsSource.leaksCollected, 0),
     },
     rebootRemainingBits: reboot === null ? null : Math.max(0, reboot),
     lastRunSummary: normalizeSummary(value.lastRunSummary),
@@ -192,6 +217,9 @@ const normalizeHero = (value: unknown, floor: FloorState): HeroState | null => {
     heat: Math.max(0, toFiniteNumber(value.heat, 0)),
     throttled: value.throttled === true,
     lockedTurns: toInt(value.lockedTurns, 0),
+    channelSiteId: toNullableNumber(value.channelSiteId),
+    carryingPayloadId: toNullableNumber(value.carryingPayloadId),
+    channelShield: value.channelShield === true,
     items,
     buffs,
     checkpoint: toInt(value.checkpoint, 0, 0, 99),
@@ -212,6 +240,7 @@ const normalizeEnemies = (value: unknown, floor: FloorState): Enemy[] => {
     if (!position || id < 0 || seen.has(id)) continue;
     seen.add(id);
     const maxHp = toInt(entry.maxHp, 1, 1, 1_000_000);
+    const spawn = normalizePoint({ x: entry.spawnX, y: entry.spawnY }, floor.width, floor.height);
     enemies.push({
       id,
       kind: entry.kind,
@@ -225,6 +254,12 @@ const normalizeEnemies = (value: unknown, floor: FloorState): Enemy[] => {
       revived: entry.revived === true,
       cooldown: toInt(entry.cooldown, 0, 0, 99),
       splitTriggered: entry.splitTriggered === true,
+      targetSiteId: toNullableNumber(entry.targetSiteId),
+      stolenPayloadId: toNullableNumber(entry.stolenPayloadId),
+      stealTimer: toInt(entry.stealTimer, 0, 0, 999),
+      workTimer: toInt(entry.workTimer, 0, 0, 999),
+      spawnX: spawn?.x ?? position.x,
+      spawnY: spawn?.y ?? position.y,
     });
   }
   return enemies;
@@ -241,6 +276,75 @@ const normalizeItems = (value: unknown, floor: FloorState): FloorItem[] => {
     items.push({ id, kind: entry.kind, x: position.x, y: position.y });
   }
   return items;
+};
+
+const normalizeSites = (value: unknown, floor: FloorState): WorkSite[] => {
+  if (!Array.isArray(value)) return [];
+  const sites: WorkSite[] = [];
+  const seen = new Set<number>();
+  for (const entry of value) {
+    if (!isRecord(entry) || !isSiteKind(entry.kind)) continue;
+    const position = normalizePoint(entry, floor.width, floor.height);
+    const id = toInt(entry.id, -1, -1);
+    if (!position || id < 0 || seen.has(id)) continue;
+    seen.add(id);
+    const totalUnits = Math.max(0, toFiniteNumber(entry.totalUnits, 0));
+    sites.push({
+      id,
+      kind: entry.kind,
+      x: position.x,
+      y: position.y,
+      totalUnits,
+      remainingUnits: Math.min(totalUnits, Math.max(0, toFiniteNumber(entry.remainingUnits, totalUnits))),
+      yieldData: toInt(entry.yieldData, 0),
+      payoutCredits: toAmount(entry.payoutCredits, amount(0)),
+      corrupted: toInt(entry.corrupted, 0, 0, 99),
+      squattedBy: toNullableNumber(entry.squattedBy),
+      resolved: entry.resolved === true,
+    });
+  }
+  return sites;
+};
+
+const PAYLOAD_HOLDERS = ["floor", "hero", "lost"] as const;
+
+const normalizePayloads = (value: unknown, floor: FloorState): Payload[] => {
+  if (!Array.isArray(value)) return [];
+  const payloads: Payload[] = [];
+  const seen = new Set<number>();
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const position = normalizePoint(entry, floor.width, floor.height);
+    const id = toInt(entry.id, -1, -1);
+    if (!position || id < 0 || seen.has(id)) continue;
+    seen.add(id);
+    const heldBy: PayloadHolder =
+      typeof entry.heldBy === "number" && Number.isFinite(entry.heldBy) && entry.heldBy >= 0
+        ? Math.trunc(entry.heldBy)
+        : PAYLOAD_HOLDERS.includes(entry.heldBy as (typeof PAYLOAD_HOLDERS)[number])
+          ? (entry.heldBy as PayloadHolder)
+          : "floor";
+    payloads.push({
+      id,
+      x: position.x,
+      y: position.y,
+      portId: toInt(entry.portId, 0, 0),
+      payoutCredits: toAmount(entry.payoutCredits, amount(0)),
+      heldBy,
+    });
+  }
+  return payloads;
+};
+
+const normalizeLeaks = (value: unknown, floor: FloorState): number[] => {
+  if (!Array.isArray(value)) return [];
+  const size = floor.width * floor.height;
+  const leaks: number[] = [];
+  for (const entry of value) {
+    const index = toInt(entry, -1, -1);
+    if (index >= 0 && index < size && !leaks.includes(index)) leaks.push(index);
+  }
+  return leaks;
 };
 
 const normalizePath = (value: unknown, floor: FloorState): Point[] | null => {
@@ -276,10 +380,25 @@ const normalizeRun = (value: unknown): RunState | null => {
   if (!hero) return null;
   const enemies = normalizeEnemies(value.enemies, floor);
   const items = normalizeItems(value.items, floor);
+  const sites = normalizeSites(value.sites, floor);
+  const payloads = normalizePayloads(value.payloads, floor);
   const events = normalizeEvents(value.events);
   const maxSeq = events.reduce((max, event) => Math.max(max, event.seq), 0);
-  const maxEntityId = [...enemies, ...items].reduce((max, entity) => Math.max(max, entity.id), 0);
+  const maxEntityId = [...enemies, ...items, ...sites, ...payloads].reduce(
+    (max, entity) => Math.max(max, entity.id),
+    0,
+  );
   const depth = toInt(value.depth, 1, 1, 10_000);
+  // hero/carrier references must exist; otherwise drop them to safe defaults
+  if (hero.carryingPayloadId !== null && !payloads.some((p) => p.id === hero.carryingPayloadId && p.heldBy === "hero")) {
+    hero.carryingPayloadId = null;
+  }
+  if (hero.channelSiteId !== null && !sites.some((s) => s.id === hero.channelSiteId)) {
+    hero.channelSiteId = null;
+  }
+  const quotaSource = isRecord(value.quota) ? value.quota : {};
+  const gcSource = isRecord(value.gcChannel) ? value.gcChannel : null;
+  const gcIndex = gcSource ? toInt(gcSource.index, -1, -1) : -1;
   return {
     seed: toInt(value.seed, 0),
     rng: normalizeRngState(value.rng as Partial<RunState["rng"]>, toInt(value.seed, 0)),
@@ -293,11 +412,24 @@ const normalizeRun = (value: unknown): RunState | null => {
     elapsedMs: Math.max(0, toFiniteNumber(value.elapsedMs, 0)),
     credits: toAmount(value.credits, amount(0)),
     salvageData: toInt(value.salvageData, 0),
+    dataMined: toInt(value.dataMined, 0),
     kills: toInt(value.kills, 0),
     hero,
     floor,
     enemies,
     items,
+    sites,
+    payloads,
+    leaks: normalizeLeaks(value.leaks, floor),
+    quota: { required: toInt(quotaSource.required, 0, 0, 99), done: toInt(quotaSource.done, 0, 0, 99) },
+    overclockTurns: toInt(value.overclockTurns, 0, 0, 99),
+    gcChannel:
+      gcSource && gcIndex >= 0 && gcIndex < floor.width * floor.height
+        ? { index: gcIndex, remaining: toInt(gcSource.remaining, 1, 1, 99) }
+        : null,
+    sitesCompleted: toInt(value.sitesCompleted, 0),
+    payloadsDelivered: toInt(value.payloadsDelivered, 0),
+    leaksCollected: toInt(value.leaksCollected, 0),
     events,
     nextEventSeq: Math.max(maxSeq + 1, toInt(value.nextEventSeq, 1, 1)),
     nextEntityId: Math.max(maxEntityId + 1, toInt(value.nextEntityId, 1, 1)),
@@ -308,15 +440,54 @@ const normalizeRun = (value: unknown): RunState | null => {
   };
 };
 
+/** v1 Data formula, used only when banking a live v1 run during migration. */
+const V1_DATA_PER_CREDITS = 10;
+
+/**
+ * v1 -> v2 migration (spec §8): bank any live run and zero it; hub state maps
+ * 1:1. The run banks with v1 semantics (floor(credits/10) + salvage + 5 x new
+ * depths) since it was earned under v1 rules.
+ */
+const migrateV1LiveRun = (hub: HubState, run: RunState): HubState => {
+  const newDepths = Math.max(0, run.maxDepthReached - hub.stats.maxDepth);
+  const data = amountAdd(
+    amountFloor(amountDivide(run.credits, V1_DATA_PER_CREDITS)),
+    Math.max(0, run.salvageData + run.dataMined) + 5 * newDepths,
+  );
+  return {
+    ...hub,
+    credits: amountAdd(hub.credits, run.credits),
+    data: amountAdd(hub.data, data),
+    stats: {
+      ...hub.stats,
+      runs: hub.stats.runs + 1,
+      maxDepth: Math.max(hub.stats.maxDepth, run.maxDepthReached),
+      totalKills: hub.stats.totalKills + run.kills,
+      lifetimeCredits: amountAdd(hub.stats.lifetimeCredits, run.credits),
+      deadlocksSurvived: hub.stats.deadlocksSurvived + run.deadlocksSurvived,
+      bossKills: hub.stats.bossKills + run.bossKills,
+      dataMined: hub.stats.dataMined + amountToSafeNumber(data),
+    },
+  };
+};
+
 /** Normalize and clamp every field of a candidate state; garbage collapses to the initial state. */
 export const normalizeGameState = (value: unknown): GameState => {
   if (!isRecord(value) || !isRecord(value.hub)) return createInitialGameState();
   const timeSource = isRecord(value.time) ? value.time : {};
-  const run = normalizeRun(value.run);
+  const isV1 = value.version !== 2;
+  let hub = normalizeHub(value.hub);
+  let run = normalizeRun(value.run);
+  if (run && run.status !== "active") run = null;
+  if (isV1 && run) {
+    // SAVE_VERSION 2 migration: bank the live v1 run and zero it
+    hub = migrateV1LiveRun(hub, run);
+    run = null;
+  }
   return {
-    version: 1,
-    hub: normalizeHub(value.hub),
-    run: run && run.status === "active" ? run : null,
+    version: 2,
+    hub,
+    run,
     rng: normalizeRngState(value.rng as Partial<GameState["rng"]>),
     watchdog: normalizeWatchdogState(value.watchdog as Partial<GameState["watchdog"]>),
     time: {

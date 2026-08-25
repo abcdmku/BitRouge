@@ -19,6 +19,11 @@ export const cloneRunForTurn = (run: RunState): RunState => ({
   floor: { ...run.floor },
   enemies: run.enemies.map((enemy) => ({ ...enemy })),
   items: [...run.items],
+  sites: run.sites.map((site) => ({ ...site })),
+  payloads: run.payloads.map((payload) => ({ ...payload })),
+  leaks: [...run.leaks],
+  quota: { ...run.quota },
+  gcChannel: run.gcChannel ? { ...run.gcChannel } : null,
   events: [...run.events],
 });
 

@@ -3,10 +3,15 @@ import type { RunEvent } from "../game/renderSnapshot";
 import { DEPTH, TILE } from "./constants";
 import { resolveSprite, type FrameLookup } from "./assets/manifest";
 import { cellCenter, type EntityView } from "./EntityView";
+import type { SiteView } from "./SiteView";
 
 export interface EventTargets {
   hero: EntityView | null;
   enemies: Map<number, EntityView>;
+  /** v2 work sites by id (for site event effects) */
+  sites: Map<number, SiteView>;
+  /** floor width — leak events carry a cell index */
+  width: number;
   lookup: FrameLookup;
 }
 
@@ -90,11 +95,6 @@ export class EventPlayer {
       case "tripped":
         this.scene.cameras.main.flash(120, 224, 48, 75, true);
         break;
-      case "deadlockPenalty":
-        if (t.hero) {
-          this.floatText(t.hero.sprite.x, t.hero.sprite.y - 10, `-${trimNumber(ev.creditsLost)}cr`, "#ff6bf1");
-        }
-        break;
       case "descended":
         // The scene has already rebuilt for the new depth; just mask the swap.
         this.scene.cameras.main.fadeIn(180, 7, 8, 15);
@@ -107,6 +107,83 @@ export class EventPlayer {
         }
         break;
       }
+      // ---- v2 work events (spec §7) ----
+      case "siteChanneled": {
+        t.sites.get(ev.siteId)?.flash(0x6ff2ff, 70);
+        break;
+      }
+      case "siteCompleted": {
+        const site = t.sites.get(ev.siteId);
+        const x = site?.sprite.x ?? t.hero?.sprite.x ?? 0;
+        const y = site?.sprite.y ?? t.hero?.sprite.y ?? 0;
+        if (ev.siteKind === "dataNode") this.floatText(x, y - 8, `+${trimNumber(String(ev.data))} D`, "#6ff2ff");
+        else this.floatText(x, y - 8, `+${trimNumber(String(ev.credits))}cr`, "#ffd166");
+        site?.flash(0x8cff9a, 180);
+        this.burst(x, y, t.lookup);
+        break;
+      }
+      case "siteCorrupted": {
+        const site = t.sites.get(ev.siteId);
+        if (site) {
+          site.flash(0xff6bf1, 200);
+          this.floatText(site.sprite.x, site.sprite.y - 8, "-25%", "#ff6bf1");
+        }
+        break;
+      }
+      case "siteSquatted": {
+        t.sites.get(ev.siteId)?.flash(0xff5566, 220);
+        break;
+      }
+      case "payloadTaken":
+        if (t.hero) this.burst(t.hero.sprite.x, t.hero.sprite.y, t.lookup);
+        break;
+      case "payloadStolen": {
+        // Alarm flash on the thieving daemon.
+        const thief = t.enemies.get(ev.byId);
+        if (thief) {
+          this.flash(thief, 0xff3344, 120);
+          this.scene.time.delayedCall(180, () => thief.sprite.active && this.flash(thief, 0xff3344, 120));
+          this.floatText(thief.sprite.x, thief.sprite.y - 10, "STOLEN", "#ff7a8a");
+        }
+        this.scene.cameras.main.shake(90, 0.004);
+        break;
+      }
+      case "payloadDelivered":
+        if (t.hero) {
+          this.floatText(t.hero.sprite.x, t.hero.sprite.y - 10, `+${trimNumber(String(ev.credits))}cr`, "#ffd166");
+          this.burst(t.hero.sprite.x, t.hero.sprite.y, t.lookup);
+        }
+        break;
+      case "payloadLost":
+        if (t.hero) this.floatText(t.hero.sprite.x, t.hero.sprite.y - 10, "payload lost", "#8894b8");
+        break;
+      case "leakSpawned": {
+        const { px, py } = cellCenter(ev.index % t.width, Math.floor(ev.index / t.width));
+        this.cellFlash(px, py, 0xff6bf1);
+        break;
+      }
+      case "leakCollected": {
+        const { px, py } = cellCenter(ev.index % t.width, Math.floor(ev.index / t.width));
+        this.floatText(px, py - 6, `+${trimNumber(String(ev.credits))}cr`, "#8cff9a");
+        this.cellFlash(px, py, 0x22c55e);
+        break;
+      }
+      case "overclocked":
+        if (ev.on) this.scene.cameras.main.flash(120, 111, 242, 255, true);
+        break;
+      case "quotaProgress":
+        if (t.hero) {
+          this.floatText(t.hero.sprite.x, t.hero.sprite.y - 14, `FLUSH ${ev.done}/${ev.required}`, "#6ff2ff");
+        }
+        break;
+      case "floorScrambled":
+        // Kernel glitch: hot magenta flash + hard shake while the scene rebuilds.
+        this.scene.cameras.main.flash(200, 255, 79, 138, true);
+        this.scene.cameras.main.shake(220, 0.01);
+        break;
+      case "stairsUnlocked":
+        this.scene.cameras.main.flash(140, 60, 220, 110, true);
+        break;
       case "heroMoved":
       case "enemyMoved":
       case "controlChanged":
@@ -114,6 +191,13 @@ export class EventPlayer {
       default:
         break;
     }
+  }
+
+  private cellFlash(x: number, y: number, color: number): void {
+    const g = this.scene.add.graphics().setDepth(DEPTH.fx);
+    g.fillStyle(color, 0.55);
+    g.fillRect(x - TILE / 2, y - TILE / 2, TILE, TILE);
+    this.scene.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
   }
 
   private flash(view: EntityView, tint: number, ms = 90): void {

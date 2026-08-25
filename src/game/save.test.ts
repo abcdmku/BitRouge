@@ -41,6 +41,50 @@ describe("save", () => {
     }
   });
 
+  it("migrates v1 saves: banks any live run into the hub and zeroes it (SAVE_VERSION 2)", () => {
+    expect(SAVE_VERSION).toBe(2);
+    // build a real v2 state with a live run, then disguise it as a v1 save
+    let state = applyAction(createInitialGameState(11), { type: "deploy" });
+    state = advanceGame(state, 20_000, "foreground").state;
+    expect(state.run).not.toBeNull();
+    const activeRun = state.run!;
+    const live = {
+      ...state,
+      run: {
+        ...activeRun,
+        credits: "37" as typeof activeRun.credits,
+        salvageData: 2,
+        dataMined: 0,
+        kills: 3,
+        maxDepthReached: 2,
+      },
+    };
+    const v1 = JSON.parse(JSON.stringify({ ...live, version: 1 })) as Record<string, unknown>;
+    const migrated = normalizeGameState(v1);
+    expect(migrated.version).toBe(2);
+    expect(migrated.run).toBeNull(); // live run banked and zeroed
+    // banked with v1 semantics: floor(37/10) + salvage 2 + 5 × 2 new depths = 15
+    expect(migrated.hub.credits).toBe("47"); // starting 10 + 37
+    expect(migrated.hub.data).toBe("15");
+    expect(migrated.hub.stats.runs).toBe(1);
+    expect(migrated.hub.stats.totalKills).toBe(3);
+    expect(migrated.hub.stats.maxDepth).toBe(2);
+    expect(migrated.hub.stats.lifetimeCredits).toBe("37");
+    // hub-only v1 saves map 1:1
+    const hubOnly = normalizeGameState({ ...JSON.parse(JSON.stringify(createInitialGameState(12))), version: 1 });
+    expect(hubOnly.run).toBeNull();
+    expect(hubOnly.hub.credits).toBe("10");
+    expect(hubOnly.hub.stats.runs).toBe(0);
+  });
+
+  it("v2 saves keep a live run (no migration)", () => {
+    let state = applyAction(createInitialGameState(13), { type: "deploy" });
+    state = advanceGame(state, 20_000, "foreground").state;
+    expect(state.run).not.toBeNull();
+    const loaded = deserializeSave(serializeSave(state, 1_000));
+    expect(loaded.state.run).not.toBeNull();
+  });
+
   it("clamps and normalizes corrupt fields instead of throwing", () => {
     const state = normalizeGameState({
       hub: {

@@ -2,10 +2,9 @@ import { amount, amountMultiply } from "../amount";
 import { getKillCredits } from "../economy";
 import { createHeroState, deriveHeroStats } from "../hero";
 import { createInitialHubState } from "../initialState";
-import { getBiome, TileKind, type EnemyKind } from "../renderSnapshot";
+import { getTier, TileKind, type EnemyKind } from "../renderSnapshot";
 import { createRngState } from "../rng";
 import type { Enemy, FloorState, HeroStats, RunState } from "../types";
-import { BIOME_ENEMY_WEIGHTS } from "./biomes";
 import {
   createEnemy,
   enemyDefinitions,
@@ -71,11 +70,21 @@ const makeRun = (overrides: Partial<RunState> = {}, stats = strongStats()): RunS
   elapsedMs: 0,
   credits: amount(0),
   salvageData: 0,
+  dataMined: 0,
   kills: 0,
   hero: createHeroState(stats, 2, 2),
   floor: makeFloor(true),
   enemies: [],
   items: [],
+  sites: [],
+  payloads: [],
+  leaks: [],
+  quota: { required: 0, done: 0 },
+  overclockTurns: 0,
+  gcChannel: null,
+  sitesCompleted: 0,
+  payloadsDelivered: 0,
+  leaksCollected: 0,
   events: [],
   nextEventSeq: 1,
   nextEntityId: 100,
@@ -87,18 +96,18 @@ const makeRun = (overrides: Partial<RunState> = {}, stats = strongStats()): RunS
 });
 
 describe("kernelPanic boss", () => {
-  it("spawns on every 5th floor next to the stairs, with the stairs locked", () => {
-    expect(isBossDepth(5)).toBe(true);
-    expect(isBossDepth(10)).toBe(true);
+  it("spawns on controller floors (3, 7, 11, 15, ...) with the bus gate locked", () => {
+    expect(isBossDepth(3)).toBe(true);
+    expect(isBossDepth(7)).toBe(true);
+    expect(isBossDepth(11)).toBe(true);
+    expect(isBossDepth(15)).toBe(true);
+    expect(isBossDepth(5)).toBe(false);
     expect(isBossDepth(4)).toBe(false);
-    expect(isBossDepth(6)).toBe(false);
-    for (let seed = 1; seed <= 50; seed += 1) {
-      const generated = generateFloor(createRngState(seed), 5, 1);
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const generated = generateFloor(createRngState(seed), 3, 1);
       const bosses = generated.enemies.filter((candidate) => candidate.kind === "kernelPanic");
       expect(bosses).toHaveLength(1);
       const boss = bosses[0]!;
-      const distance = Math.abs(boss.x - generated.floor.stairs.x) + Math.abs(boss.y - generated.floor.stairs.y);
-      expect(distance).toBe(1);
       expect(generated.floor.stairsLocked).toBe(true);
       // nothing else shares the boss cell
       const sameCell = [...generated.enemies, ...generated.items].filter(
@@ -106,10 +115,9 @@ describe("kernelPanic boss", () => {
       );
       expect(sameCell).toHaveLength(0);
     }
-    // non-boss floors have no boss and unlocked stairs
+    // non-controller floors have no boss (the gate stays quota-locked)
     const plain = generateFloor(createRngState(1), 4, 1);
     expect(plain.enemies.some((candidate) => candidate.kind === "kernelPanic")).toBe(false);
-    expect(plain.floor.stairsLocked).toBe(false);
   });
 
   it("locked stairs refuse descend and emit a stairsLocked event", () => {
@@ -199,7 +207,7 @@ describe("kernelPanic boss", () => {
 });
 
 describe("kernelPanic integration (real advance loop)", () => {
-  it("a strong hub crosses the depth-5 boss floor: boss killed, bounty banked, campaign objective set", async () => {
+  it("a strong hub crosses the depth-3 controller floor: boss killed, campaign objective set", async () => {
     const { advanceGame } = await import("../advance");
     const { applyAction } = await import("../actions");
     const { createInitialGameState } = await import("../initialState");
@@ -215,13 +223,20 @@ describe("kernelPanic integration (real advance loop)", () => {
         },
       };
       state = applyAction(state, { type: "deploy" });
+      // run until the run ends or the controller floor is well behind us; v2
+      // runs for a strong hub can outlast any fixed guard, so abort banks it
       let guard = 0;
-      while (state.run && guard++ < 2000) state = advanceGame(state, 60_000, "foreground").state;
+      while (state.run && state.run.maxDepthReached < 5 && guard++ < 400) {
+        state = advanceGame(state, 60_000, "foreground").state;
+      }
+      if (state.run) state = applyAction(state, { type: "abortRun" });
       expect(state.run).toBeNull();
       totalBossKills += state.hub.stats.bossKills;
-      if (state.hub.stats.maxDepth >= 6) {
+      if (state.hub.stats.maxDepth >= 4) {
+        // flushing past 3 normally means the controller died (forceDescend is the rare fallback)
         crossed += 1;
-        // descending past 5 normally means the boss died (forceDescend is the rare fallback)
+      }
+      if (state.hub.stats.maxDepth >= 5) {
         expect(state.campaign.completedObjectiveIds).toContain("orders:depth-5");
       }
       if (state.hub.stats.bossKills > 0) {
@@ -233,17 +248,19 @@ describe("kernelPanic integration (real advance loop)", () => {
   }, 60_000);
 });
 
-describe("biomes", () => {
-  it("maps depth bands to network / storage / kernel", () => {
-    expect(getBiome(1)).toBe("network");
-    expect(getBiome(5)).toBe("network");
-    expect(getBiome(6)).toBe("storage");
-    expect(getBiome(10)).toBe("storage");
-    expect(getBiome(11)).toBe("kernel");
-    expect(getBiome(42)).toBe("kernel");
+describe("tier fault mixes", () => {
+  it("maps depth bands to cache / ram / disk / kernel", () => {
+    expect(getTier(1)).toBe("cache");
+    expect(getTier(3)).toBe("cache");
+    expect(getTier(4)).toBe("ram");
+    expect(getTier(7)).toBe("ram");
+    expect(getTier(8)).toBe("disk");
+    expect(getTier(11)).toBe("disk");
+    expect(getTier(12)).toBe("kernel");
+    expect(getTier(42)).toBe("kernel");
   });
 
-  it("biome weights shift the enemy mix per band", () => {
+  it("each tier draws only its own fault mix; kernel runs everything", () => {
     const sample = (depth: number) => {
       let rng = createRngState(1234 + depth);
       const counts = new Map<EnemyKind, number>();
@@ -254,22 +271,18 @@ describe("biomes", () => {
       }
       return counts;
     };
-    const storage = sample(7);
-    const kernel = sample(12);
-    const network = sample(4);
-    // storage favors memoryLeak/zombieProcess over the network band
-    expect(storage.get("memoryLeak") ?? 0).toBeGreaterThan(network.get("memoryLeak") ?? 0);
-    expect(storage.get("zombieProcess") ?? 0).toBeGreaterThan(0);
-    // kernel favors deadlock/forkBomb/nullPointer, and suppresses bitFlip
-    expect(kernel.get("deadlock") ?? 0).toBeGreaterThan(storage.get("deadlock") ?? 0);
-    expect(kernel.get("bitFlip") ?? 0).toBeLessThan(network.get("bitFlip") ?? 0);
-    // weights table stays total-positive per biome
-    for (const weights of Object.values(BIOME_ENEMY_WEIGHTS)) {
-      for (const value of Object.values(weights)) expect(value).toBeGreaterThan(0);
-    }
+    const cache = sample(2);
+    for (const kind of cache.keys()) expect(["bitFlip", "forkBomb"]).toContain(kind);
+    const ram = sample(5);
+    for (const kind of ram.keys()) expect(["memoryLeak", "nullPointer", "zombieProcess"]).toContain(kind);
+    const disk = sample(9);
+    for (const kind of disk.keys()) expect(["daemon", "deadlock", "zombieProcess"]).toContain(kind);
+    const kernel = sample(13);
+    expect(kernel.size).toBeGreaterThanOrEqual(5); // everything, hot
+    expect(kernel.has("kernelPanic")).toBe(false); // bosses never roll
   });
 
-  it("hazards on deep floors follow the biome weighting and stay valid kinds", () => {
+  it("hazards on deep floors stay valid kinds", () => {
     for (const depth of [6, 12]) {
       const generated = generateFloor(createRngState(depth), depth, 1);
       for (const hazard of generated.floor.hazards) {

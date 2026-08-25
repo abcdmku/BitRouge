@@ -45,21 +45,39 @@ export const campaignChapterDefinitions: readonly CampaignChapterDefinition[] = 
     index: 1,
     name: "Bootstrap Process",
     description: "Bring one process from first deploy to a funded, upgraded node.",
-    objectiveIds: ["boot:first-deploy", "boot:first-kill", "boot:first-bank", "boot:first-hardware"],
+    objectiveIds: [
+      "boot:first-deploy",
+      "boot:first-kill",
+      "boot:first-bank",
+      "boot:first-hardware",
+      "boot:first-site",
+    ],
   },
   {
     id: "coherentMachine",
     index: 2,
     name: "Coherent Machine",
     description: "Unify sight, depth, and survival into one dependable machine.",
-    objectiveIds: ["coherent:cache-mapping", "coherent:depth-3", "coherent:survive-deadlock", "coherent:bank-100"],
+    objectiveIds: [
+      "coherent:cache-mapping",
+      "coherent:depth-3",
+      "coherent:survive-deadlock",
+      "coherent:bank-100",
+      "coherent:mine-10",
+    ],
   },
   {
     id: "standingOrders",
     index: 3,
     name: "Standing Orders",
     description: "Leave orders the machine keeps while unattended.",
-    objectiveIds: ["orders:watchdog", "orders:offline-run", "orders:depth-5", "orders:kernel-panic"],
+    objectiveIds: [
+      "orders:watchdog",
+      "orders:offline-run",
+      "orders:depth-5",
+      "orders:kernel-panic",
+      "orders:deliver-5",
+    ],
   },
 ] as const;
 
@@ -108,6 +126,19 @@ export const campaignObjectiveDefinitions: readonly CampaignObjectiveDefinition[
     blockedReason: "Buy any hardware upgrade.",
   },
   {
+    id: "boot:first-site",
+    chapterId: "bootstrapProcess",
+    label: "Complete a work site",
+    description: "Finish a data node, job station, or payload delivery.",
+    transmission: "First work order closed. The floor is a job queue now.",
+    requirement: (state) =>
+      state.hub.stats.sitesCompleted > 0 ||
+      state.hub.stats.payloadsDelivered > 0 ||
+      (state.run?.sitesCompleted ?? 0) > 0 ||
+      (state.run?.payloadsDelivered ?? 0) > 0,
+    blockedReason: "Interact with a data node, job station, or payload.",
+  },
+  {
     id: "coherent:cache-mapping",
     chapterId: "coherentMachine",
     label: "Research Cache Mapping",
@@ -120,10 +151,10 @@ export const campaignObjectiveDefinitions: readonly CampaignObjectiveDefinition[
     id: "coherent:depth-3",
     chapterId: "coherentMachine",
     label: "Reach depth 3",
-    description: "Descend to floor 3.",
-    transmission: "Depth 3. The storage layer answers slowly.",
+    description: "Flush through to floor 3, the cache controller floor.",
+    transmission: "Depth 3. The cache controller floor. The gate wants its quota.",
     requirement: (state) => deepestKnown(state) >= 3,
-    blockedReason: "Descend to floor 3.",
+    blockedReason: "Meet the quota and flush through to floor 3.",
   },
   {
     id: "coherent:survive-deadlock",
@@ -143,6 +174,16 @@ export const campaignObjectiveDefinitions: readonly CampaignObjectiveDefinition[
     transmission: "One hundred credits on the ledger. Compound interest begins.",
     requirement: (state) => amountCompare(state.hub.stats.lifetimeCredits, 100) >= 0,
     blockedReason: "Bank 100 credits across all runs.",
+  },
+  {
+    id: "coherent:mine-10",
+    chapterId: "coherentMachine",
+    label: "Mine 10 Data in one run",
+    description: "Channel data nodes for 10 Data in a single run.",
+    transmission: "Ten units pulled from the banks in one pass. Mining is literal now.",
+    requirement: (state) =>
+      (state.run?.dataMined ?? 0) >= 10 || (state.hub.lastRunSummary?.dataMined ?? 0) >= 10,
+    blockedReason: "Channel data nodes for 10 Data in a single run.",
   },
   {
     id: "orders:watchdog",
@@ -166,8 +207,8 @@ export const campaignObjectiveDefinitions: readonly CampaignObjectiveDefinition[
     id: "orders:depth-5",
     chapterId: "standingOrders",
     label: "Reach depth 5",
-    description: "Descend to floor 5.",
-    transmission: "Depth 5. Kernel space. Tread carefully.",
+    description: "Descend into the RAM banks on floor 5.",
+    transmission: "Depth 5. The RAM banks stretch out — long buses, long hauls.",
     requirement: (state) => deepestKnown(state) >= 5,
     blockedReason: "Descend to floor 5.",
   },
@@ -175,10 +216,20 @@ export const campaignObjectiveDefinitions: readonly CampaignObjectiveDefinition[
     id: "orders:kernel-panic",
     chapterId: "standingOrders",
     label: "Defeat a Kernel Panic",
-    description: "Kill the boss guarding a 5th floor's stairs.",
+    description: "Kill the controller guarding a controller floor's bus gate.",
     transmission: "Kernel Panic contained. The stack reboots around you.",
     requirement: (state) => state.hub.stats.bossKills > 0 || (state.run?.bossKills ?? 0) > 0,
-    blockedReason: "Kill the boss guarding a 5th floor's stairs.",
+    blockedReason: "Kill the controller guarding a controller floor's bus gate.",
+  },
+  {
+    id: "orders:deliver-5",
+    chapterId: "standingOrders",
+    label: "Deliver 5 payloads",
+    description: "Haul 5 payloads to their I/O ports across all runs.",
+    transmission: "Fifth payload docked. The transfer queue trusts you now.",
+    requirement: (state) =>
+      state.hub.stats.payloadsDelivered + (state.run?.payloadsDelivered ?? 0) >= 5,
+    blockedReason: "Haul payloads to their I/O ports.",
   },
 ] as const;
 

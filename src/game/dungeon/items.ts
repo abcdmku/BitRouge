@@ -51,7 +51,8 @@ export const pickUpItem = (run: RunState, stats: HeroStats, item: FloorItem): bo
   } else if (item.kind === "checkpoint") {
     run.hero.checkpoint += 1;
   } else if (item.kind === "coreDump") {
-    run.salvageData += getCoreDumpData(run.depth, stats);
+    // v2: all Data flows through dataMined (salvageData is a v1 leftover)
+    run.dataMined += getCoreDumpData(run.depth, stats);
   }
   run.items = run.items.filter((candidate) => candidate.id !== item.id);
   pushEvent(run, { kind: "itemPicked", id: item.id, itemKind: item.kind, x: item.x, y: item.y });

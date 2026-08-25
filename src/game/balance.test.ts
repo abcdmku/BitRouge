@@ -15,7 +15,7 @@ const SEEDS = 20;
  * "never dies" regressions, not a specific tuning.
  */
 describe("balance: first run from the initial state", () => {
-  it(`lasts a few hundred turns and banks roughly 10-40 credits (${SEEDS} seeds)`, () => {
+  it(`lasts a few hundred turns and banks roughly 10-80 credits (${SEEDS} seeds)`, () => {
     const turns: number[] = [];
     const credits: number[] = [];
     const depths: number[] = [];
@@ -29,18 +29,19 @@ describe("balance: first run from the initial state", () => {
       credits.push(amountToNumber(summary.creditsBanked));
       depths.push(summary.maxDepthReached);
       expect(summary.turns).toBeGreaterThanOrEqual(20);
-      expect(summary.turns).toBeLessThanOrEqual(1500);
+      expect(summary.turns).toBeLessThanOrEqual(2000);
+      // v2 income mix: work sites + hauls + GC carry the run; kills pay change
       expect(amountToNumber(summary.creditsBanked)).toBeGreaterThanOrEqual(4);
-      expect(amountToNumber(summary.creditsBanked)).toBeLessThanOrEqual(80);
+      expect(amountToNumber(summary.creditsBanked)).toBeLessThanOrEqual(160);
       expect(summary.maxDepthReached).toBeGreaterThanOrEqual(1);
-      expect(summary.maxDepthReached).toBeLessThanOrEqual(5);
+      expect(summary.maxDepthReached).toBeLessThanOrEqual(6);
       expect(amountToNumber(summary.dataBanked)).toBeGreaterThanOrEqual(5); // new max depth 1 alone gives 5
     }
     const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
     expect(mean(turns)).toBeGreaterThanOrEqual(60);
-    expect(mean(turns)).toBeLessThanOrEqual(600);
-    expect(mean(credits)).toBeGreaterThanOrEqual(8);
-    expect(mean(credits)).toBeLessThanOrEqual(45);
+    expect(mean(turns)).toBeLessThanOrEqual(800);
+    expect(mean(credits)).toBeGreaterThanOrEqual(10);
+    expect(mean(credits)).toBeLessThanOrEqual(90);
     expect(Math.max(...depths)).toBeGreaterThanOrEqual(2); // some runs reach depth 2+
   }, 30_000);
 

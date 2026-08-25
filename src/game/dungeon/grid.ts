@@ -13,6 +13,16 @@ export const DIR_VECTORS: Record<Dir, Point> = {
   w: { x: -1, y: 0 },
 };
 
+/**
+ * Vent tile (§7 contract: tile value 4 = `TileKind.vent`). Walkable,
+ * transparent; standing on one adds +3 heat dissipation (resolved in the sim).
+ * A literal, not `TileKind.vent`: grid.ts sits inside the renderSnapshot ->
+ * advance -> dungeon import cycle and must not read that object at module eval.
+ */
+export const VENT_TILE: TileKindValue = 4;
+
+export const isVentTile = (tile: TileKindValue | null) => tile === VENT_TILE;
+
 export const toIndex = (x: number, y: number, width: number) => y * width + x;
 
 export const toPoint = (index: number, width: number): Point => ({

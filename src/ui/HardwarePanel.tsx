@@ -5,10 +5,16 @@ export interface HardwarePanelProps {
   dispatch: (action: GameAction) => void;
 }
 
-/** Clock rows get the derived cadence appended: "2.30 Hz → 0.9s/turn". */
+/**
+ * Clock rows get the derived cadence appended ("2.30 Hz → 0.9s/turn");
+ * cache rows read as bandwidth (§6: job units/turn and channel-turn discount).
+ */
 export function effectLine(row: VisibleHardwareRow, clockHz: number): string {
-  if (row.kind !== "clock") return row.effect;
-  return `${row.effect} = ${formatSeconds(getMsPerTurn(clockHz, 1) / 1000)}/turn`;
+  if (row.kind === "clock") return `${row.effect} = ${formatSeconds(getMsPerTurn(clockHz, 1) / 1000)}/turn`;
+  if (row.kind === "cache") {
+    return `${row.effect} · ${1 + row.level} unit/turn, −${Math.floor(row.level / 2)} channel turns`;
+  }
+  return row.effect;
 }
 
 export function HardwarePanel({ visible, dispatch }: HardwarePanelProps) {

@@ -50,8 +50,8 @@ export const researchDefinitions: readonly ResearchDefinition[] = [
   entry(
     "prefetchDaemon",
     "Prefetch Daemon",
-    "Daemon: reveals items on the current floor.",
-    "What the floor holds is fetched before it is needed.",
+    "Daemon: reveals work sites and payloads on the current floor.",
+    "The work queue is fetched before it is needed.",
     8,
     { daemon: true, watts: 2 },
   ),
@@ -73,8 +73,8 @@ export const researchDefinitions: readonly ResearchDefinition[] = [
   entry(
     "garbageCollector",
     "Garbage Collector",
-    "Daemon: regenerate 1 HP every 4 turns.",
-    "Leaked memory returns to the pool, slowly.",
+    "Daemon: auto-collects one adjacent leak cell every 4 turns.",
+    "Leaked memory returns to the pool, billed to the ledger.",
     10,
     { daemon: true, watts: 2 },
   ),
@@ -94,15 +94,15 @@ export const researchDefinitions: readonly ResearchDefinition[] = [
   ),
   entry(
     "bugBounty",
-    "Bug Bounty",
-    "+25% kill credits.",
-    "Every terminated fault now bills the ledger.",
+    "Piecework Rates",
+    "+25% work payouts (jobs, deliveries, GC).",
+    "Every completed work unit now bills the ledger.",
     20,
   ),
   entry(
     "coreDumpAnalysis",
     "Core Dump Analysis",
-    "Core dumps salvage twice the Data.",
+    "Controller floors yield twice the Data.",
     "A crash is a dataset if you read it right.",
     25,
   ),
@@ -141,6 +141,28 @@ export const researchDefinitions: readonly ResearchDefinition[] = [
     "Unlocks Watchdog L3: System Scheduler, 24 h offline buffer.",
     "Memory and compute now share one plan.",
     150,
+  ),
+  // ---- v2 work research (§6) -----------------------------------------------
+  entry(
+    "dmaController",
+    "DMA Controller",
+    "Hauling a payload no longer doubles the fault alert radius.",
+    "Transfers move without waking the bus.",
+    20,
+  ),
+  entry(
+    "branchPredictor",
+    "Branch Predictor",
+    "The first hit during a channel does not reset it.",
+    "The pipeline survives one mispredicted fault.",
+    25,
+  ),
+  entry(
+    "eccMemory",
+    "ECC Memory",
+    "bitFlip corruption of data nodes is halved.",
+    "Single-bit errors correct themselves now.",
+    30,
   ),
 ];
 
