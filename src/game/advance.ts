@@ -41,7 +41,6 @@ import {
   HOP_LIMIT_HEAT,
   LIVE_PACKET_CAP,
   MANUAL_DELIVERY_MULTIPLIER,
-  OFFLINE_CAP_MS,
   OFFLINE_INTEGRITY_FLOOR,
   OVERHEAT_DAMAGE_PER_S,
   OVERHEAT_HEAT,
@@ -56,6 +55,7 @@ import {
   WATCHDOG_PATCH_MS,
 } from "./economy";
 import { nextRngFloat, nextRngInt } from "./rng";
+import { getAutomationBufferMs, researchDefinitions } from "./research";
 import {
   MAX_ADVANCE_STEP_MS,
   nonNegativeElapsed,
@@ -100,7 +100,14 @@ export const getNextEventMs = (state: GameState): number => {
 export const cloneGameState = (state: GameState): GameState => ({
   ...state,
   rng: { ...state.rng, state: [...state.rng.state] },
-  meta: { ...state.meta, architecture: [...state.meta.architecture] },
+  meta: {
+    ...state.meta,
+    architecture: [...state.meta.architecture],
+    research: {
+      completed: [...state.meta.research.completed],
+      active: state.meta.research.active ? { ...state.meta.research.active } : null,
+    },
+  },
   run: {
     ...state.run,
     backlog: state.run.backlog.map((task) => ({ ...task })),
@@ -141,6 +148,9 @@ const applyDamage = (
   rawAmount: number,
 ) => {
   const run = state.run;
+  // Let a brand-new player inspect the board before the first intervention.
+  // The shield ends permanently as soon as one job has been completed.
+  if (source === "backlogOverflow" && state.meta.totalTasks === 0) return;
   const floor =
     mode === "offline" ? Math.min(OFFLINE_INTEGRITY_FLOOR, run.integrity) : 0;
   const next = Math.max(run.integrity - rawAmount, floor);
@@ -239,33 +249,6 @@ const tryHopPacket = (
   const component = targetSocket.component;
   const active = component !== null && component.powered && !component.faulted;
 
-  // Terminal: MINER consumes the packet on entry.
-  if (component && component.kind === "miner" && active) {
-    occupied.delete(from);
-    removeFromBoard(board, packet);
-    addSocketHeat(run, target, componentDefinitions.miner.heatPerAction * heatScale(packet, manual));
-    if (packet.taskKind === "crunch" && !packetPassedProcessing(run, packet)) {
-      applyDamage(state, mode, "rawCrunch", DROPPED_TASK_DAMAGE);
-      pushEvent(run, { kind: "taskDropped", id: packet.id, taskKind: packet.taskKind, reason: "rawCrunch" });
-      return { moved: true, removed: true };
-    }
-    const value = manual
-      ? amountMultiply(packet.value, MANUAL_DELIVERY_MULTIPLIER)
-      : packet.value;
-    const mined = amountFloor(amountDivide(value, 4));
-    run.data = amountAdd(run.data, mined);
-    tally.data = amountAdd(tally.data, mined);
-    completeTask(state, tally);
-    pushEvent(run, {
-      kind: "packetDelivered",
-      id: packet.id,
-      socketIndex: target,
-      valueLabel: mined as string,
-      manual,
-    });
-    return { moved: true, removed: true };
-  }
-
   if (occupied.has(target)) return { moved: false, removed: false };
 
   // Regular hop.
@@ -290,6 +273,19 @@ const tryHopPacket = (
     }
   }
 
+  // RAM is a staging component, not a second output. It recovers Data while
+  // the packet continues toward the port, which keeps the machine readable.
+  if (component && component.kind === "miner" && active) {
+    addSocketHeat(
+      run,
+      target,
+      componentDefinitions.miner.heatPerAction * heatScale(packet, manual),
+    );
+    const staged = amountFloor(amountDivide(packet.value, 4));
+    run.data = amountAdd(run.data, staged);
+    tally.data = amountAdd(tally.data, staged);
+  }
+
   pushEvent(run, { kind: "packetMoved", id: packet.id, from, to: target, manual });
 
   // Loop punishment: automated packets drop after 32 hops (+10 heat).
@@ -309,9 +305,27 @@ const removeFromBoard = (board: RunState["board"], packet: PacketState) => {
 };
 
 const completeTask = (state: GameState, tally: DeliveryTally) => {
+  const previousTotal = state.meta.totalTasks;
   state.run.tasksDone += 1;
   state.meta.totalTasks += 1;
   tally.tasksDone += 1;
+
+  const dataEarned = Math.floor(state.meta.totalTasks / 5) - Math.floor(previousTotal / 5);
+  if (dataEarned > 0) {
+    state.run.data = amountAdd(state.run.data, dataEarned);
+    tally.data = amountAdd(tally.data, dataEarned);
+  }
+
+  const active = state.meta.research.active;
+  if (!active) return;
+  active.workDone += 1;
+  const definition = researchDefinitions[active.id];
+  if (active.workDone >= definition.workRequired) {
+    if (!state.meta.research.completed.includes(active.id)) {
+      state.meta.research.completed.push(active.id);
+    }
+    state.meta.research.active = null;
+  }
 };
 
 /** Pick the backlog slot a core pulls: FIFO, or PRIORITY-first with QoS firmware. */
@@ -432,14 +446,14 @@ const runTick = (
   state: GameState,
   tickMs: number,
   mode: AdvanceMode,
-  frozenUptimeMs: number | null,
   tally: AdvanceTally,
 ) => {
   const run = state.run;
   const board = run.board;
   const meta = state.meta;
   const tickSec = tickMs / 1000;
-  const escalationUptimeMs = frozenUptimeMs ?? run.uptimeMs;
+  const escalationUptimeMs = run.pressureMs;
+  run.ventCooldownMs = Math.max(0, run.ventCooldownMs - tickMs);
   const ports = getPortIndices(board.width, board.height, hasArchPerk(meta.architecture, "eastPort"));
 
   // -- power / duty at tick start --------------------------------------------
@@ -664,9 +678,9 @@ const emptyReport = (mode: AdvanceMode, awayMs: number, state: GameState): Advan
 });
 
 /**
- * Advance the simulation by `elapsedMs`. Foreground advances the run clock;
- * offline runs powered automation only with the escalation clock frozen at the
- * departure rate, integrity floored at 25, and a 12 h cap.
+ * Advance the simulation by `elapsedMs`. Uptime includes automated offline
+ * work. Load pressure only grows in the foreground, so leaving the game does
+ * not turn a stable node into an unrecoverable one.
  */
 export const advanceGame = (
   input: GameState,
@@ -674,17 +688,15 @@ export const advanceGame = (
   mode: AdvanceMode,
 ): AdvanceResult => {
   const requestedMs = normalizeAdvanceTimeMs(nonNegativeElapsed(elapsedMs));
+  const offlineCapMs = getAutomationBufferMs(input);
   const budgetMs =
-    mode === "offline" ? normalizeAdvanceTimeMs(Math.min(requestedMs, OFFLINE_CAP_MS)) : requestedMs;
+    mode === "offline" ? normalizeAdvanceTimeMs(Math.min(requestedMs, offlineCapMs)) : requestedMs;
   if (budgetMs <= 0 || isCrashed(input)) {
     return { state: input, report: emptyReport(mode, requestedMs, input) };
   }
 
   const state = cloneGameState(input);
   const run = state.run;
-  // Freezing the run clock offline freezes escalation and task value at the
-  // departure rate, and keeps piecewise offline advances self-consistent.
-  const frozenUptimeMs = mode === "offline" ? run.uptimeMs : null;
   const tally: AdvanceTally = {
     ...createDeliveryTally(),
     dutyMs: 0,
@@ -700,12 +712,15 @@ export const advanceGame = (
     const eventMs = normalizeAdvanceTimeMs(Math.max(0, tickMs - run.tickAccumMs));
     const stepMs = selectPositiveAdvanceStepMs(remainingMs, Math.min(eventMs, MAX_ADVANCE_STEP_MS));
     run.tickAccumMs = normalizeAdvanceTimeMs(run.tickAccumMs + stepMs);
-    if (mode !== "offline") run.uptimeMs = normalizeAdvanceTimeMs(run.uptimeMs + stepMs);
+    run.uptimeMs = normalizeAdvanceTimeMs(run.uptimeMs + stepMs);
+    if (mode !== "offline") {
+      run.pressureMs = normalizeAdvanceTimeMs(run.pressureMs + stepMs);
+    }
     remainingMs = normalizeAdvanceTimeMs(remainingMs - stepMs);
     simulatedMs = normalizeAdvanceTimeMs(simulatedMs + stepMs);
     while (run.tickAccumMs >= tickMs) {
       run.tickAccumMs = normalizeAdvanceTimeMs(run.tickAccumMs - tickMs);
-      runTick(state, tickMs, mode, frozenUptimeMs, tally);
+      runTick(state, tickMs, mode, tally);
       if (run.integrity <= 0) break;
     }
   }

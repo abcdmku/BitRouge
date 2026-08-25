@@ -1,17 +1,17 @@
 import { useState, type ReactNode } from "react";
 
-export type TabId = "build" | "system" | "arch";
+export type TabId = "hardware" | "research" | "evolution";
 
 export const TABS: { id: TabId; label: string }[] = [
-  { id: "build", label: "Build" },
-  { id: "system", label: "System" },
-  { id: "arch", label: "Arch" },
+  { id: "hardware", label: "Hardware" },
+  { id: "research", label: "Research" },
+  { id: "evolution", label: "Evolution" },
 ];
 
 export interface LayoutProps {
   header: ReactNode;
   banner?: ReactNode;
-  /** The board (BoardView) plus the backlog strip and place-mode overlay. */
+  /** The active node and its intervention controls. */
   stage: ReactNode;
   /** Tab id → panel content. */
   panels: Record<TabId, ReactNode>;
@@ -28,7 +28,7 @@ export interface LayoutProps {
  * sheet with BUILD/SYSTEM/ARCH tabs. ≥900px: stage left, sheet right.
  * Geometry never moves with game status.
  */
-export function Layout({ header, banner, stage, panels, alerts = {}, tab, onTabChange, initialTab = "build" }: LayoutProps) {
+export function Layout({ header, banner, stage, panels, alerts = {}, tab, onTabChange, initialTab = "hardware" }: LayoutProps) {
   const [ownTab, setOwnTab] = useState<TabId>(initialTab);
   const activeTab = tab ?? ownTab;
   const selectTab = (next: TabId) => {
@@ -42,7 +42,7 @@ export function Layout({ header, banner, stage, panels, alerts = {}, tab, onTabC
         {banner}
       </div>
       <div className="app__body">
-        <section className="stage" aria-label="Board">
+        <section className="stage" aria-label="Active node">
           {stage}
         </section>
         <aside className="sheet">

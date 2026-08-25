@@ -24,9 +24,19 @@ import {
   getSellRefund,
   getSiliconPayout,
   getUpgradeCost,
+  getArrivalIntervalMs,
   VOLUNTARY_REFLOW_MIN_UPTIME_MS,
 } from "./economy";
 import { formatAmount, formatDurationMs } from "./format";
+import {
+  canAdvanceClock,
+  getAutomationBufferMs,
+  getClockGateLabel,
+  getClockRateLabel,
+  getCpuTier,
+  researchDefinitions,
+  researchRequirementsMet,
+} from "./research";
 import type {
   AdvanceReport,
   ArchPerkId,
@@ -34,6 +44,7 @@ import type {
   DamageSource,
   FirmwareId,
   GameState,
+  ResearchId,
   TaskKind,
 } from "./types";
 
@@ -105,6 +116,37 @@ export interface VisibleSystemRow {
   affordable: boolean;
   glow: boolean;
   owned: boolean;
+  lockedReason: string | null;
+}
+
+export interface VisibleResearchRow {
+  id: ResearchId;
+  name: string;
+  description: string;
+  branch: "compute" | "automation" | "system" | "tier";
+  costLabel: string;
+  workLabel: string;
+  progress: number;
+  status: "available" | "active" | "completed" | "locked";
+  affordable: boolean;
+  blockedReason: string | null;
+}
+
+export interface VisibleNodeStatus {
+  condition: "stable" | "loaded" | "critical" | "offline";
+  conditionLabel: string;
+  conditionDetail: string;
+  pressureLevel: number;
+  arrivalLabel: string;
+  nextJobLabel: string;
+  bufferLabel: string;
+  faultCount: number;
+  canPulse: boolean;
+  canVent: boolean;
+  canShed: boolean;
+  ventCooldownLabel: string | null;
+  clockLabel: string;
+  clockTier: string;
 }
 
 export interface VisibleArchRow {
@@ -160,6 +202,8 @@ export interface VisibleState {
   backlogCap: number;
   build: VisibleBuildRow[];
   system: VisibleSystemRow[];
+  research: VisibleResearchRow[];
+  node: VisibleNodeStatus;
   arch: VisibleArchRow[];
   /** Per-socket popover data; null for empty/locked sockets. */
   popovers: (VisiblePopover | null)[];
@@ -207,7 +251,7 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
   const crashed = run.integrity <= 0;
   const generationW = getGenerationW(run.system.railLevel, meta.architecture);
   const drawW = getPowerDrawW(run);
-  const duty = crashed ? 0 : getDuty(run, meta);
+  const duty = crashed || generationW <= 0 ? 0 : getDuty(run, meta);
   const affordCredits = (cost: Amount) => amountCompare(run.credits, cost) >= 0;
 
   const hud: VisibleHud = {
@@ -253,6 +297,17 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
     const owned = countComponents(run.board, kind);
     const cost = getComponentCost(kind, owned);
     const genLocked = definition.minGen > meta.gen;
+    const researchLocked =
+      kind === "cache" && !meta.research.completed.includes("cacheMapping")
+        ? "RESEARCH CACHE MAPPING"
+        : kind === "miner" && !meta.research.completed.includes("ramControl")
+          ? "RESEARCH RAM CONTROL"
+          : kind === "gpu" && !meta.research.completed.includes("specializedCompute")
+            ? "RESEARCH SPECIALIZED COMPUTE"
+            : kind === "core" && owned > 0 && !meta.research.completed.includes("multiCore")
+              ? "RESEARCH MULTI-CORE CONTROL"
+              : null;
+    const lockedReason = researchLocked ?? (genLocked ? `GEN ${definition.minGen}` : null);
     const affordable = affordCredits(cost);
     return {
       kind,
@@ -261,9 +316,9 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       cost,
       costLabel: formatAmount(cost),
       affordable,
-      glow: affordable && !genLocked && !crashed,
+      glow: affordable && lockedReason === null && !crashed,
       owned,
-      lockedReason: genLocked ? `GEN ${definition.minGen}` : null,
+      lockedReason,
     };
   });
 
@@ -276,6 +331,7 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
     cost: Amount | number,
     currency: "credits" | "data",
     owned: boolean,
+    lockedReason: string | null = null,
   ) => {
     const affordable = owned
       ? false
@@ -291,14 +347,15 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       costLabel: owned ? "OWNED" : formatAmount(String(cost)),
       currency,
       affordable,
-      glow: affordable && !crashed,
+      glow: affordable && lockedReason === null && !crashed,
       owned,
+      lockedReason,
     });
   };
   pushSystem(
     "rail",
-    "RAIL",
-    `+6 W generation (now ${generationW} W)`,
+    "PSU Capacity",
+    `+6 W generation; ${generationW} W installed`,
     run.system.railLevel,
     getRailCost(run.system.railLevel + 1),
     "credits",
@@ -306,8 +363,8 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
   );
   pushSystem(
     "capacitor",
-    "CAPACITOR",
-    "reserve ×1.6",
+    "Power Reserve",
+    "stores 1.6x more energy",
     run.system.capacitorLevel,
     getCapacitorCost(run.system.capacitorLevel + 1),
     "credits",
@@ -315,12 +372,13 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
   );
   pushSystem(
     "clock",
-    "CLOCK",
-    `faster tick (now ${Math.round(getEffectiveTickMs(run.system.clockLevel))} ms)`,
-    run.system.clockLevel,
+    "CPU Clock",
+    `${getClockRateLabel(run.system.clockLevel)}; ${Math.round(getEffectiveTickMs(run.system.clockLevel))} ms cycle`,
+    getCpuTier(run.system.clockLevel).level,
     getClockCost(run.system.clockLevel + 1),
     "credits",
     false,
+    canAdvanceClock(state) ? null : getClockGateLabel(run.system.clockLevel),
   );
   for (const id of ["heatPipes", "watchdog", "qos", "hotSwap"] as const) {
     const definition = firmwareDefinitions[id];
@@ -332,6 +390,15 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       definition.costData,
       "data",
       run.system.firmware.includes(id),
+      id === "watchdog" && !meta.research.completed.includes("localScheduler")
+        ? "RESEARCH LOCAL SCHEDULER"
+        : id === "qos" && !meta.research.completed.includes("systemScheduler")
+          ? "RESEARCH SYSTEM SCHEDULER"
+          : id === "heatPipes" && !meta.research.completed.includes("thermalControl")
+            ? "RESEARCH THERMAL CONTROL"
+            : id === "hotSwap" && !meta.research.completed.includes("specializedCompute")
+              ? "RESEARCH SPECIALIZED COMPUTE"
+              : null,
     );
   }
 
@@ -409,13 +476,121 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
     }));
 
   const siliconPayout = getSiliconPayout(run.uptimeMs, run.tasksDone);
+  const activeResearch = meta.research.active;
+  const research: VisibleResearchRow[] = (Object.keys(researchDefinitions) as ResearchId[]).map(
+    (id) => {
+      const definition = researchDefinitions[id];
+      const completed = meta.research.completed.includes(id);
+      const active = activeResearch?.id === id;
+      const requirementsMet = researchRequirementsMet(state, id);
+      const missing = definition.requires.find(
+        (required) => !meta.research.completed.includes(required),
+      );
+      const costs = [
+        amountCompare(definition.creditCost, 0) > 0
+          ? `${formatAmount(definition.creditCost)} CR`
+          : null,
+        amountCompare(definition.dataCost, 0) > 0
+          ? `${formatAmount(definition.dataCost)} DATA`
+          : null,
+      ].filter((part): part is string => part !== null);
+      const affordable =
+        activeResearch === null &&
+        requirementsMet &&
+        affordCredits(definition.creditCost) &&
+        amountCompare(run.data, definition.dataCost) >= 0;
+      return {
+        id,
+        name: definition.name,
+        description: definition.description,
+        branch: definition.branch,
+        costLabel: costs.join(" + ") || "NO COST",
+        workLabel: `${definition.workRequired} jobs`,
+        progress: completed
+          ? 1
+          : active
+            ? Math.min(1, (activeResearch?.workDone ?? 0) / definition.workRequired)
+            : 0,
+        status: completed
+          ? "completed"
+          : active
+            ? "active"
+            : requirementsMet
+              ? "available"
+              : "locked",
+        affordable,
+        blockedReason: completed
+          ? null
+          : active
+            ? `${activeResearch?.workDone ?? 0}/${definition.workRequired} jobs`
+            : activeResearch !== null
+              ? `R&D BUSY: ${researchDefinitions[activeResearch.id].name}`
+              : missing
+                ? `REQUIRES ${researchDefinitions[missing].name.toUpperCase()}`
+                : null,
+      };
+    },
+  );
+
+  const backlogCap = getBacklogCap(meta.architecture);
+  const faultCount = run.board.sockets.filter((socket) => socket.component?.faulted).length;
+  const maxHeat = hud.maxHeat ?? 0;
+  const critical =
+    crashed || run.integrity <= 35 || run.backlog.length >= backlogCap - 2 || faultCount > 0;
+  const loaded = run.integrity < 70 || run.backlog.length >= backlogCap / 2 || maxHeat >= 70;
+  const offline = generationW <= 0 || duty <= 0;
+  const condition: VisibleNodeStatus["condition"] = critical
+    ? "critical"
+    : offline
+      ? "offline"
+      : loaded
+        ? "loaded"
+        : "stable";
+  const intervalMs = getArrivalIntervalMs(run.pressureMs, meta.gen);
+  const bufferMs = getAutomationBufferMs(state);
+  const node: VisibleNodeStatus = {
+    condition,
+    conditionLabel: condition.toUpperCase(),
+    conditionDetail:
+      faultCount > 0
+        ? `${faultCount} fault${faultCount === 1 ? "" : "s"} blocking work`
+        : run.backlog.length >= backlogCap - 2
+          ? "queue is near capacity"
+          : maxHeat >= 70
+            ? "hardware is throttling"
+            : offline
+              ? "manual processing only; install PSU capacity"
+              : "output is keeping pace with incoming work",
+    pressureLevel: Math.floor(run.pressureMs / (5 * 60_000)) + 1,
+    arrivalLabel: `${(60_000 / intervalMs).toFixed(1)} jobs/min`,
+    nextJobLabel: `${Math.max(0, Math.ceil((intervalMs - run.arrivalAccumMs) / 1000))}s`,
+    bufferLabel:
+      bufferMs <= 0
+        ? "Starting Node · foreground only"
+        : `${formatDurationMs(bufferMs)} Automation Buffer`,
+    faultCount,
+    canPulse:
+      !crashed &&
+      (faultCount > 0 ||
+        run.board.packets.length > 0 ||
+        (run.backlog.length > 0 &&
+          run.board.sockets.some((socket) => socket.component?.kind === "core"))),
+    canVent: !crashed && run.ventCooldownMs <= 0 && maxHeat > 0,
+    canShed: !crashed && run.backlog.length > 0,
+    ventCooldownLabel:
+      run.ventCooldownMs > 0 ? `${Math.ceil(run.ventCooldownMs / 1000)}s` : null,
+    clockLabel: getClockRateLabel(run.system.clockLevel),
+    clockTier: getCpuTier(run.system.clockLevel).tier,
+  };
 
   return {
     hud,
     backlog,
-    backlogCap: getBacklogCap(meta.architecture),
+    backlogCap,
     build,
     system,
+    research,
+    node,
     arch,
     popovers,
     crash: crashed

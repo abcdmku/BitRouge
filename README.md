@@ -1,18 +1,18 @@
 # BitRouge
 
-A pixel-art roguelike built on IdleBit's idle compute mechanics. A hero process auto-explores a corrupted data-center stack in real time; you can take over turn-by-turn whenever you like. Runs are the prestige layer: die, bank the Credits, buy faster hardware, redeploy.
+BitRouge is an interactive idle game about building a computer that can survive an escalating workload. Process jobs, keep power and heat under control, finish research, push from Hz to GHz, and hold each run long enough to earn permanent architecture upgrades.
 
-Vite + React 19 + TypeScript (strict) + Phaser 4 for the dungeon view. Pure simulation lives in `src/game` and has no framework imports.
+The project uses Vite, React 19, strict TypeScript, and Phaser 4 for a renderer diagnostics page. The pure deterministic simulation lives in `src/game` and has no framework imports.
 
 ## Develop
 
-```
+```sh
 npm install
 npm run dev        # http://127.0.0.1:6174
 npm run verify     # tests + typecheck + build
 ```
 
-Design spec: `docs/game-spec.md`. Contributor rules: `AGENTS.md`.
+See [the game spec](docs/game-spec.md) for the current loop and progression. Contributor rules are in [AGENTS.md](AGENTS.md).
 
 ## Deploy
 

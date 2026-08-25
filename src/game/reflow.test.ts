@@ -35,7 +35,7 @@ describe("reflow and silicon", () => {
     const after = applyAction(crashed, { type: "reflow" });
     expect(after).not.toBe(crashed);
     expect(after.run.integrity).toBeGreaterThan(0);
-    expect(after.run.credits).toBe("0"); // credits reset
+    expect(after.run.credits).toBe("999"); // workshop currency persists
     expect(after.run.backlog).toHaveLength(0);
     expect(after.run.system.railLevel).toBe(0);
     expect(after.meta.totalTasks).toBe(42); // stats persist
@@ -60,6 +60,14 @@ describe("reflow and silicon", () => {
     let rich = { ...state, meta: { ...state.meta, silicon: 100 } };
     rich = applyAction(rich, { type: "buyArch", id: "board5x8" });
     rich = applyAction(rich, { type: "buyArch", id: "eastPort" });
+    rich.run.board.sockets[toIndex(2, 4, 5)].unlocked = true;
+    rich.run.board.sockets[toIndex(2, 4, 5)].component = {
+      kind: "cache",
+      level: 2,
+      powered: true,
+      faulted: true,
+      faultAgeMs: 500,
+    };
     const crashed = { ...rich, run: { ...rich.run, integrity: 0, uptimeMs: 60_000 } };
     const fresh = applyAction(crashed, { type: "reflow" });
     expect(fresh.run.board.height).toBe(8);
@@ -67,6 +75,11 @@ describe("reflow and silicon", () => {
     // South port on the new bottom row, east port mid-east.
     expect(fresh.run.board.sockets[toIndex(2, 7, 5)].unlocked).toBe(true);
     expect(fresh.run.board.sockets[toIndex(4, 3, 5)].unlocked).toBe(true);
+    expect(fresh.run.board.sockets[toIndex(2, 5, 5)].component).toMatchObject({
+      kind: "cache",
+      level: 2,
+      faulted: false,
+    });
   });
 
   it("integrity25 raises the fresh run's starting integrity", () => {

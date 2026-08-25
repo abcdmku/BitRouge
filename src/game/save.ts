@@ -5,6 +5,7 @@ import {
   DAMAGE_SOURCES,
   DIRS,
   FIRMWARE_IDS,
+  RESEARCH_IDS,
   TASK_KINDS,
   type ArchPerkId,
   type ComponentKind,
@@ -16,10 +17,12 @@ import {
   type MetaState,
   type PacketState,
   type RunState,
+  type ResearchId,
   type SocketState,
   type TaskKind,
   type TaskState,
 } from "./types";
+import { researchDefinitions } from "./research";
 import { EVENT_RING_SIZE, getGenFromArchitecture, getMaxIntegrity } from "./economy";
 import {
   BASE_BOARD_HEIGHT,
@@ -32,7 +35,7 @@ import {
 } from "./initialState";
 import { normalizeRngState } from "./rng";
 
-export const SAVE_VERSION = 3 as const;
+export const SAVE_VERSION = 4 as const;
 
 export interface SaveEnvelope {
   version: typeof SAVE_VERSION;
@@ -108,6 +111,17 @@ const normalizeMeta = (value: unknown): MetaState => {
       architecture.push(perk);
     }
   }
+  const researchSource = isRecord(value.research) ? value.research : {};
+  const completed: ResearchId[] = [];
+  if (Array.isArray(researchSource.completed)) {
+    for (const id of researchSource.completed) {
+      if (isOneOf(id, RESEARCH_IDS) && !completed.includes(id)) completed.push(id);
+    }
+  }
+  const activeSource = isRecord(researchSource.active) ? researchSource.active : null;
+  const activeId = activeSource && isOneOf(activeSource.id, RESEARCH_IDS)
+    ? activeSource.id
+    : null;
   return {
     silicon: toInt(value.silicon, 0),
     gen: getGenFromArchitecture(architecture),
@@ -115,6 +129,21 @@ const normalizeMeta = (value: unknown): MetaState => {
     bestUptimeMs: Math.max(0, toFiniteNumber(value.bestUptimeMs, 0)),
     totalTasks: toInt(value.totalTasks, 0),
     reflows: toInt(value.reflows, 0),
+    research: {
+      completed,
+      active:
+        activeId && !completed.includes(activeId)
+          ? {
+              id: activeId,
+              workDone: toInt(
+                activeSource?.workDone,
+                0,
+                0,
+                researchDefinitions[activeId].workRequired - 1,
+              ),
+            }
+          : null,
+    },
   };
 };
 
@@ -233,6 +262,10 @@ const normalizeRun = (value: unknown, meta: MetaState): RunState => {
 
   return {
     uptimeMs: Math.max(0, toFiniteNumber(value.uptimeMs, 0)),
+    pressureMs: Math.max(
+      0,
+      toFiniteNumber(value.pressureMs, toFiniteNumber(value.uptimeMs, 0)),
+    ),
     integrity: toClamped(value.integrity, 0, 0, getMaxIntegrity(meta.architecture)),
     credits: toAmount(value.credits, amount(0)),
     data: toAmount(value.data, amount(0)),
@@ -255,6 +288,7 @@ const normalizeRun = (value: unknown, meta: MetaState): RunState => {
     tickAccumMs: Math.max(0, toFiniteNumber(value.tickAccumMs, 0)),
     damageLog,
     tasksDone: toInt(value.tasksDone, 0),
+    ventCooldownMs: Math.max(0, toFiniteNumber(value.ventCooldownMs, 0)),
     events,
     nextEventSeq: Math.max(maxSeq + 1, toInt(value.nextEventSeq, 1, 1)),
   };

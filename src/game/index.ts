@@ -41,6 +41,9 @@ export type {
   DamageSource,
   Dir,
   FirmwareId,
+  ResearchId,
+  ResearchState,
+  ActiveResearch,
   FxEvent,
   FxEventBase,
   GameAction,
@@ -60,8 +63,23 @@ export {
   DAMAGE_SOURCES,
   DIRS,
   FIRMWARE_IDS,
+  RESEARCH_IDS,
   TASK_KINDS,
 } from "./types";
+
+export type { CpuTier, ResearchDefinition } from "./research";
+export {
+  canAdvanceClock,
+  CPU_TIER_LEVELS,
+  getAutomationBufferMs,
+  getClockGateLabel,
+  getClockRateLabel,
+  getCpuTier,
+  getResearchProgress,
+  hasResearch,
+  researchDefinitions,
+  researchRequirementsMet,
+} from "./research";
 
 // ---- board geometry ---------------------------------------------------------
 export {
@@ -129,10 +147,12 @@ export type {
   VisibleCrash,
   VisibleCrashRow,
   VisibleHud,
+  VisibleNodeStatus,
   VisibleOfflineReport,
   VisiblePopover,
   VisibleState,
   VisibleSystemRow,
+  VisibleResearchRow,
 } from "./selectors";
 export {
   createSaveEnvelope,

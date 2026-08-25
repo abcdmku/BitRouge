@@ -45,6 +45,7 @@ describe("advanceGame delta invariance", () => {
     // Dead board with no generation: backlog floods and drops grind integrity
     // down; escalated uptime accelerates arrivals.
     const start = buildState({ seed: 9, integrity: 6, uptimeMs: 30 * 60_000 });
+    start.meta.totalTasks = 1;
     const total = 10 * 60_000;
     const whole = advanceBy(start, total, 60_000);
     const pieces = advanceBy(start, total, 777);
@@ -54,6 +55,7 @@ describe("advanceGame delta invariance", () => {
 
   it("holds through crash then reflow (meta persists identically)", () => {
     const start = buildState({ seed: 5, integrity: 4, uptimeMs: 40 * 60_000 });
+    start.meta.totalTasks = 1;
     const crashDrive = (stepMs: number) => {
       const crashed = advanceBy(start, 8 * 60_000, stepMs);
       expect(crashed.run.integrity).toBe(0);

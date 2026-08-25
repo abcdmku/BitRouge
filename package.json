@@ -1,7 +1,7 @@
 {
   "name": "bitrouge",
   "version": "0.1.0",
-  "description": "A pixel-art roguelike built on IdleBit's idle compute mechanics.",
+  "description": "An interactive idle game about keeping a compute node alive under escalating load.",
   "private": true,
   "type": "module",
   "scripts": {

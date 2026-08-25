@@ -1,292 +1,181 @@
 # BitRouge Game Spec
 
-## Overview
+## One sentence
 
-BitRouge is a hybrid idle roguelike. A hero process auto-explores dungeon floors in real time, so the game idles; the player can take control turn-by-turn at any time. Death is permanent for the run, and runs are the prestige layer.
+BitRouge is an interactive idle game about building a computer that can stay online under an escalating workload.
 
-Theme: IdleBit's compute world. The dungeon is a corrupted data-center stack, the hero is a process/bit, enemies are bugs, daemons, deadlocks, and leaks. Currencies are **Credits** (spend) and **Data** (unlock). Hardware is the idle layer and derives the hero's stats.
+## Player fantasy
 
-Invariants carried over from IdleBit:
+The player is the operator of a small compute node. Jobs enter a queue, move through installed hardware, and pay Credits at the output. Faster hardware clears more work, but draws more power, produces more heat, and exposes the node to longer and harder load tests.
 
-- Pure simulation in `src/game` with no React, Phaser, or browser imports.
-- Exact decimal `Amount` currencies.
-- Deterministic seeded RNG (xoshiro128**), threaded explicitly.
-- Hardware-derived timing: no wall-clock timers; duration = work / throughput.
-- Data = floor(credits / 10) on bank.
-- Offline buffer whose capacity-at-departure is authoritative.
-- `applyAction(state, action)` reducer plus selector pattern.
+The target feel combines three things:
 
-## Two layers
+- IdleBit's clean computer vocabulary, Credits and Data economy, research names, automation tiers, and Hz to GHz scale.
+- The Tower's long survival runs, mounting pressure, post-run diagnosis, and permanent prestige choices.
+- Idle Brick Breaker's readable machine-in-motion, direct interventions, and frequent upgrade decisions.
 
-**Hub (persistent)**: Credits, Data, hardware levels, research, watchdog.
+There is no dungeon, hero, or arbitrary socket editor in the primary game. The computer is the game.
 
-**Run (volatile)**: hero deployed with stats derived from hardware, auto-explores, dies, then **banks**:
+## Core loop
 
-```
-hub.credits += run.credits
-hub.data    += floor(banked / 10) + run.salvageData + 5 × (each new max depth reached)
-```
+1. Jobs arrive automatically.
+2. The CPU pulls jobs from the queue and sends them across the job bus.
+3. Installed Cache, RAM, GPU, and Cooling modules change value, Data yield, heat, and capacity.
+4. Completed jobs pay Credits and advance the active research project.
+5. The player upgrades the current bottleneck while watching power, heat, faults, queue pressure, and integrity.
+6. Foreground load rises over time. A run eventually becomes difficult to sustain.
+7. The player can Reflow after 10 minutes, or after a crash, to earn Silicon for permanent architecture.
+8. Hardware, Credits, Data, firmware, and research persist through Reflow. Uptime, heat, faults, integrity, and the queue reset.
 
-If Watchdog is at least L1, a reboot countdown of `16 bits / clockHz` seconds runs, then the hero auto-redeploys. Idle income exists only through runs, so faster hardware means more turns per second means more credits per second. This keeps IdleBit's throughput invariant.
+## The first five minutes
 
-## Hardware → hero
+The opening should teach the whole game without a tutorial modal.
 
-All costs are `base × growth^n` Credits (n = current level).
+- The starting CPU has no automatic power.
+- A job arrives every 6 seconds at the first pressure level.
+- PROCESS NOW carries one job through the current route with no power cost and pays a 1.5x manual bonus.
+- A brand-new save cannot take backlog-overflow damage until its first completed job. The player can safely inspect the screen.
+- Two manual jobs pay enough to begin Decode Logic.
+- Eight base manual jobs pay enough for PSU Capacity I. Starting Decode Logic first moves that milestone to ten jobs. PSU I powers the installed CPU and starts automation.
+- VENT HEAT removes 25 heat and has an 8 second hardware cooldown.
+- SHED LOAD discards the three oldest queued jobs to protect integrity.
 
-Display names echo IdleBit's rack vocabulary: **CPU Clock**, **CPU Cores**, **Cache**, **RAM**, **PSU**, **Cooling**, **Scheduler**. The hub UI renders the clock effect IdleBit-style ("2.3 Hz = 0.87s/turn").
+The player should understand the immediate objective from the first screen: keep the queue moving, buy the PSU, and keep the node alive.
 
-| Hardware | Display | Cost | Effect |
-|---|---|---|---|
-| clock | CPU Clock | 20 × 1.6^n | `clockHz = 2 × 1.15^n`; auto-turn `msPerTurn = 1000 × (2 × 1.35^(depth-1)) / clockHz`; reboot time |
-| cores | CPU Cores | 140 × 2.05^n Credits + 2 × 1.3^n Data | daemon (passive) slots |
-| cache | Cache | 30 × 1.8^n | `attack = 1 + level` |
-| ram | RAM | 35 × 1.7^n | `maxHp = 8 + 6 × level` |
-| psu | PSU | 60 × 1.7^n | `powerBudget = 10 × 1.7^(level-1)`; items and daemons draw watts; over budget → lose a turn (trip) |
-| cooling | Cooling | 45 × 1.75^n | heat dissipated per turn; attacks add heat; heat ≥ 10 → throttled (enemies act twice) |
-| scheduler | Scheduler | 80 × 2^n | auto-explore AI level |
+## Workload and failure
 
-Base costs of clock/ram/cooling were tuned (25→20, 40→35, 50→45) so a greedy player affords the first hardware after 1–3 runs and a second within ~3 more — IdleBit's "always about to afford something" cadence. See `balance.test.ts` for the loose guard.
+Foreground pressure rises continuously. Arrival interval is:
 
-## Research (Data)
-
-Fifteen starters. Cost in Data unless noted. Ids are stable; display labels echo IdleBit's research ladder, and every definition carries a one-line `flavor` in the transmission voice (exposed on `VisibleResearchRow.flavor`).
-
-| Id | Display label | Cost | Effect |
-|---|---|---|---|
-| watchdogTimer | Local Scheduler | 5 | Watchdog L1: auto-redeploy, 2 h offline buffer |
-| cacheMapping | Cache Mapping | 6 | +2 sight radius |
-| prefetchDaemon | Prefetch Daemon | 8 | daemon: reveal floor items |
-| thermalSensors | Thermal Sensors | 10 | daemon: -1 heat/turn |
-| redundantRail | Redundant Rail | 10 | +50% PSU budget |
-| garbageCollector | Garbage Collector | 10 | daemon: +1 HP / 4 turns |
-| priorityScheduler | Priority Scheduler | 12 | +1 scheduler AI level |
-| multiCore | Multi-Core Control | 15 | +1 daemon slot |
-| bugBounty | Bug Bounty | 20 | +25% kill credits |
-| coreDumpAnalysis | Core Dump Analysis | 25 | double core-dump Data |
-| checkpointing | Checkpointing | 30 | 1 revive per run |
-| processReaper | Process Reaper | 35 | daemon: zombies stay dead |
-| cronRuntime | CRON Scheduler | 40 | Watchdog L2: 8 h |
-| deepScan | Deep Scan | 60 | start at `floor(maxDepth / 2)` |
-| systemScheduler | System Scheduler | 150 | Watchdog L3: 24 h |
-
-Watchdog level names mirror IdleBit's Automation Buffer tiers exactly: L0 **Starting Node**, L1 **Local Scheduler** (2 h), L2 **CRON Runtime** (8 h), L3 **System Scheduler** (24 h), L4 **Cluster Controller** (48 h), L5 **Global Scheduler** (168 h).
-
-## Dungeon
-
-Grid 48 × 32. Tiles: `wall | floor | door | stairsDown | hazard`.
-
-Generation:
-
-1. Place 8–12 non-overlapping random rectangles (rejection sampling, at most 200 tries).
-2. Sort rooms by x.
-3. Carve L-shaped corridors between consecutive rooms, so the floor is connected by construction.
-4. Spawn in room 0; stairs in the BFS-farthest room.
-5. Enemies `4 + 2 × depth` (+1 kernelPanic on boss floors), items `3 + floor(depth / 2)`, hazards `2 × depth` (biome-weighted kinds).
-
-All draws go through `run.rng`, which is forked from the hub rng per run. Enemy kind rolls are weighted by the depth's biome (see Biomes).
-
-## Turn resolution
-
-`resolveTurn(run, heroAction): run` — the hero acts, each enemy acts (twice if the hero is throttled), hazards and daemons tick, statuses update.
-
-Auto cadence:
-
-```
-acc += step
-while (acc >= msPerTurn) resolveTurn(run, chooseAutoAction(run))
+```text
+6000 ms * 0.97 ^ foregroundMinutes * 0.9 ^ (generation - 1)
 ```
 
-Manual control: `takeControl` freezes the accumulator. `heroMove(dir)` (bump = attack), `heroWait`, `useItem`, `descend`. `releaseControl` resumes auto. `recordDeparture` forces auto so an idle session never hangs in manual mode.
+The interval never drops below 250 ms. Later architecture introduces CRUNCH, HOT, and PRIORITY work.
 
-## Auto-explore priority
+Integrity starts at 100. It falls from:
 
-Scheduler level unlocks lower rows.
+- queue overflow: 2 damage per dropped job;
+- expired PRIORITY work: 5 damage;
+- fault spread: 5 damage;
+- raw CRUNCH output: damage when it skips processing;
+- sustained 100 heat: 1 damage per second.
 
-1. Adjacent enemy → attack. L1: retreat under 30% HP. L2: use patch first.
-2. Visible item → pick up.
-3. Nearest unexplored frontier via BFS.
-4. Stairs → descend.
-5. Unreachable stairs → `forceDescend` (anti-stall guarantee).
+Integrity regenerates at 1 per 30 seconds while fewer than 6 jobs are queued and no fault is active. At 0 integrity, the node freezes and the crash report ranks the damage sources. The report must tell the player why the run ended.
 
-## Enemies
+## Hardware
 
-| Enemy | Behaviour |
-|---|---|
-| bitFlip | chase |
-| nullPointer | random walk + lunge |
-| memoryLeak | slow; each hit lowers maxHp for the floor |
-| deadlock | stationary; while adjacent the hero can only attack or wait; 10 locked turns → lose 25% run credits |
-| forkBomb | splits on hit |
-| daemon | ranged, keeps distance |
-| zombieProcess | revives once |
-| kernelPanic | boss (see below); never in the random pool |
+Hardware is installed into fixed, readable blueprint positions. The primary UI does not ask the player to route an abstract grid.
 
-Scaling per depth: `hp × 1.15^depth`, `dmg + floor(depth / 3)`, kill credits `2 × 1.2^depth`.
+| Part | First cost | Draw | Effect |
+|---|---:|---:|---|
+| CPU Core | 15 CR for the second core | 4 W | Pulls one job. Output doubles per level. Extra cores require Multi-Core Control. |
+| Cache | 40 CR | 3 W | Doubles each job once. Requires Cache Mapping. |
+| RAM | 100 CR | 3 W | Stages work and recovers `floor(job value / 4)` Data. Requires RAM Control. |
+| Cooling Loop | 25 CR | 2 W | Removes 12 heat per second from itself and adjacent hardware. |
+| GPU | 500 CR | 10 W | Multiplies routed value by four. Requires Specialized Compute and Gen 3. |
 
-## Kernel Panic boss (every 5th floor)
+System upgrades:
 
-`isBossDepth(depth) = depth % 5 === 0`. On boss floors `generateFloor` places one **kernelPanic** on a floor cell adjacent to the stairs and sets `floor.stairsLocked = true`.
+| System | First cost | Growth | Effect |
+|---|---:|---:|---|
+| PSU Capacity | 12 CR | discrete rail curve | Adds 6 W generation per level. |
+| Power Reserve | 40 CR | 1.9x | Stores 1.6x more energy per level. |
+| CPU Clock | 30 CR | 1.8x | Shortens each hardware cycle. Tier boundaries require research. |
 
-- Stats: baseHp 20 (≈40 at depth 5 after scaling), baseDamage 2, **slow** (acts every other turn), chases and melees like a bitFlip.
-- Crossing 50% HP once (`splitTriggered`): spawns 2 alerted bitFlips in free neighbouring cells.
-- On death: kill credits × `KERNEL_PANIC_BOUNTY_MULTIPLIER` (20) — a jackpot worth roughly a full run — plus a guaranteed **coreDump** dropped on its tile, `run.bossKills += 1`, `stairsLocked = false`, and a `stairsUnlocked` event.
-- While locked, `descend` on the stairs is refused and emits a `stairsLocked` event.
-- Auto-explore: after frontier exploration, a locked floor targets the boss with an *unlimited* BFS (the normal chase limit is 8). If the boss is unreachable, `forceDescend` fires anyway — the anti-stall guarantee always wins; `forceDescend` ignores the lock by design.
-- Items can stack (a boss can die on a spawned item's cell); stepping on a cell picks up **all** items there.
+Upgrading a component costs `0.6 * base cost * 1.15 ^ (level - 1)`. A powered system above its generation budget drains the reserve, then runs at partial duty instead of stopping completely.
 
-## Biomes (per 5 depths)
+## Currencies
 
-`getBiome(depth)`: floors 1–5 **network**, 6–10 **storage**, 11+ **kernel**. Exposed additively as `RenderSnapshot.biome` and `VisibleRun.biome`.
+- Credits buy hardware, system levels, and research starts.
+- Data buys firmware and pays the Data part of research costs. Every fifth lifetime completion also yields 1 Data, so the opening research path cannot deadlock before RAM.
+- Silicon comes from long runs and buys permanent architecture.
 
-- Enemy mix (`BIOME_ENEMY_WEIGHTS`, multipliers on base weights): network favours bitFlip/daemon ×2; storage favours memoryLeak ×3, zombieProcess ×2.5 (bitFlip ×0.6); kernel favours deadlock ×2.5, forkBomb ×2, nullPointer ×2 (bitFlip ×0.5).
-- Hazard weights (`BIOME_HAZARD_WEIGHTS`): network leans brownout/overloadPlate, storage leans corruptedSector, kernel leans hotTile.
-- Renderer: `BIOME_TINTS` in `src/render/assets/manifest.ts` holds per-biome floor/wall multiply tints; TileLayer does not yet apply per-tile tints, so wiring is left to the render integrator.
+All Credits and Data are exact decimal `Amount` strings. Simulation code never uses floating-point currency balances.
 
-## Campaign transmissions
+## Research
 
-IdleBit's signature progression frame: 3 chapters × 4 objectives (`src/game/campaign.ts`). Objectives are **monotone predicates** over persisted state (stats counters such as `deadlocksSurvived`, `bossKills`, `offlineRuns`), so completion is delta-invariant across any advance-step split. The chronological transmission log (`CampaignState.log`, ring of 32 with monotonic `seq`) is the only stored campaign state; the console prints new entries by tracking `lastSeq`, prefixing "Transmission:".
+There is one active R&D slot. Starting a project pays its resource cost immediately. Completed jobs provide the work units, so better throughput completes research sooner. Research is persistent.
 
-| Chapter | Objective id | Label | Transmission |
-|---|---|---|---|
-| 1 Bootstrap Process | boot:first-deploy | Deploy a process | "First process deployed. The stack notices." |
-| | boot:first-kill | Terminate a fault | "One fault terminated. The heap breathes easier." |
-| | boot:first-bank | Bank a run | "First core dumped and banked. Death is a billing event." |
-| | boot:first-hardware | Buy hardware | "New silicon seated. The node is no longer stock." |
-| 2 Coherent Machine | coherent:cache-mapping | Research Cache Mapping | "Cache mapped. The process sees two tiles further." |
-| | coherent:depth-3 | Reach depth 3 | "Depth 3. The storage layer answers slowly." |
-| | coherent:survive-deadlock | Survive a deadlock | "Deadlock cleared. The scheduler keeps its promise." |
-| | coherent:bank-100 | Bank 100 lifetime credits | "One hundred credits on the ledger. Compound interest begins." |
-| 3 Standing Orders | orders:watchdog | Arm the watchdog | "Watchdog armed. The machine can keep a promise while unattended." |
-| | orders:offline-run | Complete an offline run | "The node worked while you were gone. Standing orders hold." |
-| | orders:depth-5 | Reach depth 5 | "Depth 5. Kernel space. Tread carefully." |
-| | orders:kernel-panic | Defeat a Kernel Panic | "Kernel Panic contained. The stack reboots around you." |
+| Research | Cost | Work | Requires | Unlock |
+|---|---:|---:|---|---|
+| Decode Logic | 3 CR | 4 jobs | none | Opens the compute tree. |
+| Cache Mapping | 6 CR + 2 Data | 6 jobs | Decode Logic | Cache modules. |
+| Benchmark Harness | 28 CR + 1 Data | 10 jobs | Decode Logic | Multi-core path. |
+| Multi-Core Control | 56 CR + 6 Data | 16 jobs | Benchmark Harness | Additional CPU cores. |
+| Local Scheduler | 80 CR + 6 Data | 24 jobs | Multi-Core Control | 2 hour Automation Buffer. |
+| RAM Control | 260 CR + 3 Data | 30 jobs | Local Scheduler | RAM modules. |
+| System Bus | 520 CR + 10 Data | 80 jobs | Local Scheduler | Scheduler and package path. |
+| CRON Scheduler | 360 CR + 10 Data | 80 jobs | System Bus | 8 hour Automation Buffer. |
+| System Scheduler | 320 CR + 8 Data | 50 jobs | CRON Scheduler | 12 hour Automation Buffer and system policies. |
+| Thermal Control | 5,000 CR + 24 Data | 180 jobs | RAM Control | Thermal firmware path. |
+| Specialized Compute | 25,000 CR + 40 Data | 300 jobs | Thermal Control | GPU and Hot-Swap path. |
+| kHz CPU Research | 2,000,000 CR | 600 jobs | System Scheduler | kHz CPU and RAM tier. |
+| MHz CPU Research | 20,000,000,000 CR | 1,800 jobs | kHz research | MHz CPU and RAM tier. |
+| GHz CPU Research | 200,000,000,000,000 CR | 5,400 jobs | MHz research | GHz CPU and RAM tier. |
 
-Each objective also carries a `blockedReason` shown while incomplete. Exposed via `deriveVisibleState().campaign` (chapters, current objective) and `deriveVisibleState().campaignTransmissions` (the log).
+The names and major cost scale mirror IdleBit. Job work replaces disconnected countdown timers.
 
-## IdleBit alignment table
+## CPU tiers
 
-| IdleBit concept | BitRouge counterpart |
-|---|---|
-| Credits / Data currencies | Credits (spend) / Data (unlock) — unchanged |
-| K/M/B stack formatting (exact < 100 K, "230 K") | `formatAmount` ports IdleBit's bands and spacing: K M B T Q Qn S Sp |
-| Automation Buffer tiers (Starting Node → Local Scheduler → CRON Runtime → System Scheduler → …) | Watchdog levels, named identically |
-| Research ladder (Decode Logic → Cache Mapping → Local Scheduler → CRON Scheduler → System Scheduler) | Research labels: Cache Mapping, Local Scheduler, CRON Scheduler, System Scheduler, Multi-Core Control |
-| Campaign chapters + transmissions ("Coherent Machine") | 3 chapters × 4 objectives; chapter 2 is literally "Coherent Machine" |
-| "2.3 GHz" hardware effect strings | "2.3 Hz = 0.87s/turn" clock rows, "5.9 W budget" PSU rows |
-| Jobs/tasks produce currency | Runs produce currency; kill credits ≈ task payouts |
-| Offline buffer, capacity-at-departure authoritative | Same invariant, same `departureLevelId` mechanism |
-| Standing orders renew while away | Watchdog auto-redeploys runs while away |
-| Contracts / SLA windows | (out of scope for now — noted for a later milestone) |
+The clock has 12 levels in each visible tier:
 
-**Hazards**: hotTile (+heat), overloadPlate (PSU trip), corruptedSector (2 dmg), brownout (0 credits → lose turn).
-
-**Items**: patch, hotfix, cacheLine, heatsink, checkpoint, coreDump.
-
-Post-MVP growth: persistent "flash" gear slot. (kernelPanic boss and biomes shipped — see sections above.)
-
-## State model (`src/game/types.ts`)
-
-```ts
-GameState {
-  version: 1;
-  hub: HubState;
-  run: RunState | null;
-  rng: Xoshiro128State;
-  watchdog: { ownedLevelId; departureLevelId; offlineProcessedMs };
-  time: { lastSavedAtMs; departedAtMs };
-  lastAdvanceReport: AdvanceReport | null;
-  campaign: { completedObjectiveIds; log; nextLogSeq };   // additive
-}
-
-HubState {
-  credits: Amount;
-  data: Amount;
-  hardware: Record<HardwareKind, number>;
-  research: { completed: ResearchId[] };
-  stats: { runs; maxDepth; totalKills; lifetimeCredits;
-           deadlocksSurvived; bossKills; offlineRuns };   // last three additive
-  rebootRemainingBits: number | null;
-  lastRunSummary: RunSummary | null;
-}
-
-RunState {
-  seed; rng; depth; turn;
-  control: "auto" | "manual";
-  turnAccumulatorMs;
-  credits: Amount;
-  salvageData; kills;
-  hero: { x, y, facing, hp, maxHp, heat, throttled, lockedTurns, items, buffs, checkpoint };
-  floor: { width, height, tiles, explored, visible, stairs, hazards };
-  enemies: Enemy[];
-  items: FloorItem[];
-  events: RunEvent[];   // ring of 64, monotonic seq
-  nextEventSeq: number;
-}
-
-GameAction =
-  | buyHardware | buyResearch | purchaseWatchdog
-  | deploy | abortRun
-  | takeControl | releaseControl | heroMove | heroWait | useItem | descend
-  | recordSave | recordDeparture | reset
+```text
+Hz 1-12 -> kHz 1-12 -> MHz 1-12 -> GHz 1-12
 ```
 
-### `advanceGame(state, elapsedMs, mode)`
+Within Hz, kHz, and MHz, the display rate begins at 1.0 and grows by 1.5x per level, capped for readable display. GHz grows by 1.18x and caps at 6.0 GHz. The next tier cannot be purchased until its research is complete.
 
-1. Normalize time to the ns grid.
-2. Offline: clamp to `watchdog capacity − offlineProcessedMs`; the remainder is `overflowMs`.
-3. Step to the next event boundary (next auto-turn or reboot completion, at most `MAX_ADVANCE_STEP_MS`) so `advance(100)∘advance(100) ≡ advance(200)`.
-4. Each tick handles reboot countdown, auto turns, and death → bank.
+## Automation and offline play
 
-Offline bound: after `OFFLINE_MAX_SIMULATED_RUNS = 12` full runs (or `OFFLINE_MAX_TURNS = 500k`), extrapolate the remaining time from mean run duration and bank, and report `extrapolatedRuns`.
+Automation must be earned.
 
-```ts
-AdvanceReport {
-  mode; elapsedMs; simulatedMs; overflowMs;
-  runsCompleted; extrapolatedRuns;
-  creditsBanked; dataBanked;
-  bufferLevelId; bufferCapacityMs;
-  turnsSimulated; extrapolatedMs;   // additive diagnostics
-  hadActivity;                      // additive: gate the offline-return dialog
-}
+| Tier | Offline cap | Capability |
+|---|---:|---|
+| Starting Node | 0 | Closing freezes simulation. |
+| Local Scheduler | 2 hours | The node can continue queued work. |
+| CRON Runtime | 8 hours | Longer unattended operation. |
+| System Scheduler | 12 hours | System policies and projects can run unattended. |
+
+Offline time increases recorded uptime but does not raise the saved foreground pressure clock. Offline failure floors integrity at 25, so the game can return in trouble but never die while the player is absent.
+
+## Firmware
+
+- Heat Pipes, 10 Data: triples ambient cooling. Requires Thermal Control.
+- Watchdog, 25 Data: patches faults after 90 seconds and draws 2 W per pending fault. Requires Local Scheduler.
+- QoS, 60 Data: CPU cores pull PRIORITY jobs first. Requires System Scheduler.
+- Hot-Swap, 150 Data: selling returns full value. Requires Specialized Compute.
+
+## Reflow and architecture
+
+Silicon payout is:
+
+```text
+floor(uptimeMinutes ^ 1.8 / 40) + floor(completedJobs / 200)
 ```
 
-Offline runs (simulated + extrapolated) also increment `hub.stats.offlineRuns` for the campaign. `hadActivity` is false when a Starting Node save reloads with zero capacity, so the UI shows the "while you were away" dialog only when something happened.
+Longer runs are disproportionately valuable. This creates the central decision: Reflow safely now, or hold the node together for a better permanent payout.
 
-Planned `src/game/` files: `amount.ts rng.ts types.ts index.ts initialState.ts economy.ts hardware.ts research.ts watchdog.ts hero.ts run.ts advance.ts actions.ts selectors.ts renderSnapshot.ts save.ts dungeon/{grid,generate,fov,path,enemies,items,hazards,turn,autoExplore}.ts`, each with colocated tests.
+Architecture purchases include starting power, more integrity, more job value, larger reserve, a larger board, additional output, dual rails, and Gen 2 to Gen 4 workload unlocks.
 
-## Renderer contract (`src/game/renderSnapshot.ts`)
+## Interface
 
-`deriveRenderSnapshot(state): RenderSnapshot | null`
+Desktop uses a stable two-column screen:
 
-```ts
-RenderSnapshot {
-  runId (seed); depth; width; height;
-  tiles; explored; visible; hazards;
-  hero: { x, y, facing, hp, maxHp, heat, throttled, anim };
-  entities: { id, kind, x, y, hp, maxHp, facing, anim }[];
-  items;
-  control; turn; msPerTurn; turnProgress;
-  events: RunEvent[];
-  biome: "network" | "storage" | "kernel";   // additive
-  stairsLocked: boolean;                      // additive (boss floors)
-}
-```
+- top: uptime, integrity, Credits, Data, reserve, and peak temperature;
+- left: active node, queue, installed modules, moving job bus, active R&D, and three interventions;
+- right: Hardware, Research, and Evolution tabs.
 
-Additive `RunEvent` kinds: `stairsLocked` (descend refused on a boss floor), `stairsUnlocked` (boss died). The `descended` event is no longer emitted for the turn-0 initial deploy.
+Mobile stacks the node over the tab panel. Controls never move because of runtime state. Status changes update color, labels, meters, and progress in place.
 
-The renderer keeps `lastSeq` and plays only new events, so it is idempotent on remount and dropped frames. `RenderCommand` is the hero/control subset of `GameAction`.
+The visual language is a dark compute console with warm amber actions, cool cyan telemetry, compact cards, and restrained pixel art. Pixel sprites support the machine instead of turning the entire interface into a low-resolution mock terminal.
 
-### Phaser side (`src/render/`)
+## Simulation rules
 
-- `DungeonScene` has zero game logic.
-- `applySnapshot()` rebuilds the tilemap when `runId` or `depth` change.
-- Visibility is a black overlay layer with per-tile alpha (0 / 0.6 / 1).
-- Entity id → sprite map; moves tween over `min(msPerTurn × 0.8, 120)` ms; `setFlipX(facing === "l")`; depth-sort by y.
-- `EventPlayer` maps hit → tint flash + camera shake + damage text, death → fade, pickup → particle burst, descend → camera fade.
-- Camera follows the hero. Viewport 12 × 9 tiles (192 × 144) with integer zoom from a `ResizeObserver`. `pixelArt: true`, `roundPixels`, `input.keyboard: false`.
-- Prefer the Phaser 4 `TilemapGPULayer` for the floor if it supports per-tile alpha; otherwise use the classic layer for the fog overlay.
-- Pure helpers `diffEntities` and `selectNewEvents` live in `src/render/diff.ts` and are unit-tested without Phaser.
+- `src/game` remains pure and imports no React, Phaser, or browser globals.
+- `advanceGame(state, elapsedMs)` is delta-invariant, including RNG draws.
+- Hardware rate owns work duration. Research uses completed jobs, and cooling and intervention cooldowns use hardware ticks.
+- Foreground uptime and load pressure are separate explicit clocks.
+- Randomness threads through `src/game/rng.ts`.
+- Saves contain serializable game state only.
 
-### React wrapper (`src/ui/DungeonView.tsx`)
-
-Creates `Phaser.Game` in `useEffect` and destroys it with `game.destroy(true)` on cleanup (StrictMode-safe; the bridge queues the latest snapshot until the scene's `create`). Keyboard is owned by React (`useKeyboard`, window `keydown` → `applyAction`) because the sim is the single source of truth and overlays steal canvas focus.
+The old Phaser socket board remains available only at `#/dev/render` for renderer diagnostics. It is not part of the primary game experience.

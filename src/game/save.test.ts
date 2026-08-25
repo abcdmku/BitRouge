@@ -10,9 +10,9 @@ import {
 } from "./save";
 import { buildState } from "./testHelpers";
 
-describe("save v3", () => {
-  it("exposes SAVE_VERSION 3", () => {
-    expect(SAVE_VERSION).toBe(3);
+describe("save v4", () => {
+  it("exposes SAVE_VERSION 4", () => {
+    expect(SAVE_VERSION).toBe(4);
   });
 
   it("roundtrips a lived-in state exactly", () => {
@@ -24,6 +24,8 @@ describe("save v3", () => {
       chips: [{ x: 1, y: 5, kind: "cache" }],
     });
     state = advanceGame(state, 90_000, "foreground").state;
+    state.meta.research.completed.push("decodeLogic");
+    state.meta.research.active = { id: "cacheMapping", workDone: 3 };
     state = applyAction(state, { type: "recordSave", timestampMs: 1_700_000_000_000 });
     const raw = serializeSave(state, 1_700_000_000_000);
     const loaded = deserializeSave(raw);
@@ -60,10 +62,19 @@ describe("save v3", () => {
     expect(loaded.state.meta.reflows).toBe(0);
   });
 
-  it("accepts a bare v3 state object without an envelope", () => {
-    const state = createInitialGameState(9);
-    const loaded = deserializeSave(JSON.stringify(state));
-    expect(loaded.state).toEqual(state);
+  it("fills v4 research and intervention fields on a bare v3 state", () => {
+    const legacy = createInitialGameState(9) as unknown as {
+      meta: { research?: unknown };
+      run: { pressureMs?: number; ventCooldownMs?: number; uptimeMs: number };
+    };
+    delete legacy.meta.research;
+    delete legacy.run.pressureMs;
+    delete legacy.run.ventCooldownMs;
+    legacy.run.uptimeMs = 12_000;
+    const loaded = deserializeSave(JSON.stringify(legacy));
+    expect(loaded.state.meta.research).toEqual({ completed: [], active: null });
+    expect(loaded.state.run.pressureMs).toBe(12_000);
+    expect(loaded.state.run.ventCooldownMs).toBe(0);
   });
 
   it("collapses garbage to the initial state", () => {

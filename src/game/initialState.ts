@@ -31,6 +31,7 @@ export const createInitialMetaState = (): MetaState => ({
   bestUptimeMs: 0,
   totalTasks: 0,
   reflows: 0,
+  research: { completed: [], active: null },
 });
 
 /**
@@ -88,6 +89,7 @@ export const createFreshRun = (meta: MetaState): RunState => {
 
   return {
     uptimeMs: 0,
+    pressureMs: 0,
     integrity: getMaxIntegrity(meta.architecture),
     credits: amount(0),
     data: amount(0),
@@ -104,6 +106,7 @@ export const createFreshRun = (meta: MetaState): RunState => {
     tickAccumMs: 0,
     damageLog: createEmptyDamageLog(),
     tasksDone: 0,
+    ventCooldownMs: 0,
     events: [],
     nextEventSeq: 1,
   };

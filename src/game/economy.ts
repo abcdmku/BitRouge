@@ -139,8 +139,8 @@ export interface ComponentDefinition {
 export const componentDefinitions: Record<ComponentKind, ComponentDefinition> = {
   core: {
     kind: "core",
-    label: "CORE",
-    flavor: "pulls a task, emits a packet — value ×2 per level",
+    label: "CPU Core",
+    flavor: "pulls one job from the queue; output doubles per level",
     baseCost: 15,
     costGrowth: 3,
     heatPerAction: 2,
@@ -150,7 +150,7 @@ export const componentDefinitions: Record<ComponentKind, ComponentDefinition> = 
   cache: {
     kind: "cache",
     label: "CACHE",
-    flavor: "×2 packet value once per pass",
+    flavor: "doubles the value of each job once",
     baseCost: 40,
     costGrowth: 1.9,
     heatPerAction: 8,
@@ -159,8 +159,8 @@ export const componentDefinitions: Record<ComponentKind, ComponentDefinition> = 
   },
   cooler: {
     kind: "cooler",
-    label: "COOLER",
-    flavor: "-12 heat/s to self + 4 neighbors",
+    label: "Cooling Loop",
+    flavor: "removes 12 heat/s from nearby hardware",
     baseCost: 25,
     costGrowth: 1.7,
     heatPerAction: 0,
@@ -169,8 +169,8 @@ export const componentDefinitions: Record<ComponentKind, ComponentDefinition> = 
   },
   miner: {
     kind: "miner",
-    label: "MINER",
-    flavor: "terminal: Data = floor(value / 4)",
+    label: "RAM",
+    flavor: "stages each job and recovers Data",
     baseCost: 100,
     costGrowth: 2.2,
     heatPerAction: 4,
@@ -180,7 +180,7 @@ export const componentDefinitions: Record<ComponentKind, ComponentDefinition> = 
   gpu: {
     kind: "gpu",
     label: "GPU",
-    flavor: "×4 packet value once per pass",
+    flavor: "multiplies routed job value by four",
     baseCost: 500,
     costGrowth: 2.5,
     heatPerAction: 20,

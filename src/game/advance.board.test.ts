@@ -145,7 +145,7 @@ describe("board tick", () => {
     expect(one.run.board.packets[0].socketIndex).toBe(toIndex(2, 3, 5));
   });
 
-  it("miners consume packets into Data = floor(value / 4)", () => {
+  it("RAM stages packets and recovers Data = floor(value / 4)", () => {
     const state = buildState({
       seed: 10,
       railLevel: 3,
@@ -155,9 +155,10 @@ describe("board tick", () => {
     });
     addPacket(state, 2, 3, 9);
     const one = advanceGame(state, TICK, "foreground").state;
-    expect(one.run.board.packets).toHaveLength(0);
+    expect(one.run.board.packets).toHaveLength(1);
+    expect(one.run.board.packets[0].socketIndex).toBe(toIndex(2, 4, 5));
     expect(amountToNumber(one.run.data)).toBe(2);
-    expect(one.run.tasksDone).toBe(1);
+    expect(one.run.tasksDone).toBe(0);
   });
 
   it("raw CRUNCH deliveries drop and cost integrity", () => {
@@ -208,7 +209,7 @@ describe("board tick", () => {
     expect(later.run.backlog.length).toBeGreaterThan(1); // arrivals kept coming
   });
 
-  it("boots calm: free CORE unpowered, duty 1, no brownout at first launch", () => {
+  it("boots calm: free CPU unpowered, no brownout, UI auto duty 0", () => {
     const state = createInitialGameState(21);
     const core = state.run.board.sockets[toIndex(2, 3, 5)].component;
     expect(core?.kind).toBe("core");
@@ -217,7 +218,7 @@ describe("board tick", () => {
     const later = advanceGame(state, 15_000, "foreground").state;
     expect(eventsOfKind(later, "brownout")).toHaveLength(0);
     const hud = deriveVisibleState(later).hud;
-    expect(hud.duty).toBe(1);
+    expect(hud.duty).toBe(0);
     expect(hud.maxHeat).toBe(0); // additive HUD field for WS3
   });
 

@@ -26,6 +26,51 @@ export const DIRS: readonly Dir[] = ["N", "E", "S", "W"];
 export type FirmwareId = "heatPipes" | "watchdog" | "qos" | "hotSwap";
 export const FIRMWARE_IDS: readonly FirmwareId[] = ["heatPipes", "watchdog", "qos", "hotSwap"];
 
+/** Persistent R&D. The opening path mirrors IdleBit's hardware ladder. */
+export type ResearchId =
+  | "decodeLogic"
+  | "cacheMapping"
+  | "benchmarkHarness"
+  | "multiCore"
+  | "localScheduler"
+  | "systemScheduler"
+  | "ramControl"
+  | "systemBus"
+  | "cronScheduler"
+  | "thermalControl"
+  | "specializedCompute"
+  | "cpuTierKhz"
+  | "cpuTierMhz"
+  | "cpuTierGhz";
+
+export const RESEARCH_IDS: readonly ResearchId[] = [
+  "decodeLogic",
+  "cacheMapping",
+  "benchmarkHarness",
+  "multiCore",
+  "localScheduler",
+  "systemScheduler",
+  "ramControl",
+  "systemBus",
+  "cronScheduler",
+  "thermalControl",
+  "specializedCompute",
+  "cpuTierKhz",
+  "cpuTierMhz",
+  "cpuTierGhz",
+];
+
+export interface ActiveResearch {
+  id: ResearchId;
+  /** Completed jobs are the exact work unit for research. */
+  workDone: number;
+}
+
+export interface ResearchState {
+  completed: ResearchId[];
+  active: ActiveResearch | null;
+}
+
 /** Permanent architecture perks, bought with Silicon. `baseValue20` is repeatable. */
 export type ArchPerkId =
   | "startKit"
@@ -149,6 +194,8 @@ export type FxEvent = FxEventBase &
 
 export interface RunState {
   uptimeMs: number;
+  /** Foreground load age. Offline uptime grows without escalating the saved load. */
+  pressureMs: number;
   /** 0..maxIntegrity (100 + 25 per `integrity25` perk). 0 = crashed. */
   integrity: number;
   credits: Amount;
@@ -161,8 +208,10 @@ export interface RunState {
   tickAccumMs: number;
   /** Applied integrity damage by source; feeds the crash report. */
   damageLog: Record<DamageSource, number>;
-  /** Tasks completed (PORT or MINER deliveries) this run; the W in the Silicon payout. */
+  /** Jobs delivered to an output this run; the W in the Silicon payout. */
   tasksDone: number;
+  /** Manual vent lockout. This advances on the same hardware tick as heat. */
+  ventCooldownMs: number;
   /** Fx event ring for the renderer (bounded, monotonic `seq`). */
   events: FxEvent[];
   nextEventSeq: number;
@@ -177,6 +226,7 @@ export interface MetaState {
   bestUptimeMs: number;
   totalTasks: number;
   reflows: number;
+  research: ResearchState;
 }
 
 export interface GameState {
@@ -199,6 +249,11 @@ export type GameAction =
   | { type: "togglePower"; index: number }
   | { type: "buySystem"; item: "rail" | "capacitor" | "clock" }
   | { type: "buyFirmware"; id: FirmwareId }
+  | { type: "startResearch"; id: ResearchId }
+  | { type: "pulseSystem" }
+  | { type: "ventSystem" }
+  | { type: "shedLoad" }
+  | { type: "installComponent"; kind: ComponentKind }
   | { type: "buyArch"; id: ArchPerkId }
   | { type: "reflow" }
   | { type: "recordSave"; timestampMs: number }
@@ -211,7 +266,7 @@ export type AdvanceMode = "foreground" | "offline";
 
 export interface AdvanceReport {
   mode: AdvanceMode;
-  /** Requested elapsed time (before the 12 h offline cap). */
+  /** Requested elapsed time before the researched Automation Buffer cap. */
   awayMs: number;
   /** Time actually simulated. */
   simulatedMs: number;

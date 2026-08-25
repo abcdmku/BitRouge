@@ -4,14 +4,19 @@ import { advanceGame } from "./advance";
 import { OFFLINE_CAP_MS } from "./economy";
 import { buildState } from "./testHelpers";
 
+const withOfflineBuffer = <T extends ReturnType<typeof buildState>>(state: T) => {
+  state.meta.research.completed = ["systemScheduler"];
+  return state;
+};
+
 const poweredBoard = (seed: number, uptimeMs = 5 * 60_000) =>
-  buildState({
+  withOfflineBuffer(buildState({
     seed,
     railLevel: 2,
     reserveJ: 50,
     uptimeMs,
     dirs: [{ x: 1, y: 5, dir: "E" }],
-  });
+  }));
 
 describe("advanceGame offline mode", () => {
   it("is deterministic and piecewise-consistent (offline 2h ≡ 2×offline 1h)", () => {
@@ -22,23 +27,23 @@ describe("advanceGame offline mode", () => {
     expect(second).toEqual(whole);
   });
 
-  it("freezes the escalation clock at the departure rate", () => {
+  it("counts uptime away while freezing foreground load escalation", () => {
     const start = poweredBoard(13, 10 * 60_000);
     const away = 2 * 3_600_000;
     const offline = advanceGame(start, away, "offline");
-    // Run clock frozen: uptime unchanged, so arrival interval never compounds.
-    expect(offline.state.run.uptimeMs).toBe(start.run.uptimeMs);
+    expect(offline.state.run.uptimeMs).toBe(start.run.uptimeMs + away);
+    expect(offline.state.run.pressureMs).toBe(start.run.pressureMs);
     const foreground = advanceGame(start, away, "foreground");
-    // Foreground escalates (uptime advances) and floods the board with far
-    // more arrivals; the frozen offline board keeps up.
-    expect(foreground.state.run.uptimeMs).toBeGreaterThan(start.run.uptimeMs);
+    // Foreground pressure keeps rising and floods the board with more work.
+    expect(foreground.state.run.pressureMs).toBeGreaterThan(start.run.pressureMs);
     expect(offline.report.tasksDone).toBeGreaterThan(0);
     expect(offline.state.run.integrity).toBeGreaterThan(foreground.state.run.integrity);
   });
 
   it("floors offline integrity damage at 25 — the system never dies alone", () => {
     // Zero-generation board: every arrival overflows the backlog.
-    const start = buildState({ seed: 17, uptimeMs: 30 * 60_000, integrity: 60 });
+    const start = withOfflineBuffer(buildState({ seed: 17, uptimeMs: 30 * 60_000, integrity: 60 }));
+    start.meta.totalTasks = 1;
     const offline = advanceGame(start, 6 * 3_600_000, "offline");
     expect(offline.state.run.integrity).toBeGreaterThanOrEqual(25);
     expect(offline.state.run.integrity).toBeLessThan(30); // it did bleed to the floor
@@ -47,7 +52,8 @@ describe("advanceGame offline mode", () => {
   });
 
   it("does not damage below the current value when returning already critical", () => {
-    const start = buildState({ seed: 19, uptimeMs: 30 * 60_000, integrity: 10 });
+    const start = withOfflineBuffer(buildState({ seed: 19, uptimeMs: 30 * 60_000, integrity: 10 }));
+    start.meta.totalTasks = 1;
     const offline = advanceGame(start, 3_600_000, "offline");
     expect(offline.state.run.integrity).toBeGreaterThanOrEqual(10);
   });

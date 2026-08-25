@@ -105,7 +105,10 @@ export const buildState = (setup: TestBoardSetup = {}): GameState => {
   if (setup.reserveJ !== undefined) run.system.reserveJ = setup.reserveJ;
   if (setup.credits !== undefined) run.credits = amount(setup.credits);
   if (setup.integrity !== undefined) run.integrity = setup.integrity;
-  if (setup.uptimeMs !== undefined) run.uptimeMs = setup.uptimeMs;
+  if (setup.uptimeMs !== undefined) {
+    run.uptimeMs = setup.uptimeMs;
+    run.pressureMs = setup.uptimeMs;
+  }
   return state;
 };
 

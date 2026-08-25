@@ -1,5 +1,7 @@
 # BitRouge v3 — SOLDER
 
+> Archived prototype. The current design is documented in `docs/game-spec.md`.
+
 The pixel art IS the machine. No hero, no floors, no dungeon. You build a living
 motherboard that must survive a stream of auto-assigned tasks. Packets crawl
 along traces you draw; heat spreads; faults glitch; the load escalates until the

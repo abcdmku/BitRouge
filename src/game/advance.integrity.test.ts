@@ -7,8 +7,18 @@ import { deriveVisibleState } from "./selectors";
 import { addTask, buildState, eventsOfKind, TICK } from "./testHelpers";
 
 describe("integrity and crash", () => {
+  it("protects a brand-new node from overflow until its first completed job", () => {
+    const state = buildState({ seed: 0 });
+    const cap = getBacklogCap(state.meta.architecture);
+    for (let i = 0; i < cap; i += 1) addTask(state, "bulk", 1);
+    const waiting = advanceGame(state, 6_500, "foreground").state;
+    expect(waiting.run.integrity).toBe(100);
+    expect(waiting.meta.totalTasks).toBe(0);
+  });
+
   it("dropped tasks on a full backlog cost 2 integrity each", () => {
     const state = buildState({ seed: 1, uptimeMs: 0 });
+    state.meta.totalTasks = 1;
     const cap = getBacklogCap(state.meta.architecture);
     for (let i = 0; i < cap; i += 1) addTask(state, "bulk", 1);
     // Next arrival (~6 s) overflows.
@@ -56,6 +66,7 @@ describe("integrity and crash", () => {
 
   it("crash at 0 integrity freezes the run and fills the ranked damage report", () => {
     const state = buildState({ seed: 5, integrity: 3, uptimeMs: 25 * 60_000 });
+    state.meta.totalTasks = 1;
     let current = state;
     for (let i = 0; i < 600 && current.run.integrity > 0; i += 1) {
       current = advanceGame(current, 1_000, "foreground").state;
