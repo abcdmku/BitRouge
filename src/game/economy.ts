@@ -307,7 +307,7 @@ export const archPerkDefinitions: Record<ArchPerkId, ArchPerkDefinition> = {
   startKit: {
     id: "startKit",
     label: "START KIT",
-    flavor: "begin with RAIL I + 6 sockets",
+    flavor: "begin with +1 PSU level and 6 sockets",
     baseCostSilicon: 3,
     repeatable: false,
     costGrowth: 1,

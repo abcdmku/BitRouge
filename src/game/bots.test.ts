@@ -70,10 +70,10 @@ interface BotPolicy {
 const runBot = (policy: BotPolicy): BotResult => {
   let state = createInitialGameState(SEED);
   const coreIndex = at(2, 3);
-  // Power the boot CORE on with 0 W generation: duty 0 keeps the board fully
+  // Force 0 W generation while leaving the boot CORE on: duty 0 keeps the board fully
   // manual (the zero-watt regime these policies are tuned for) — packets only
   // move when hand-carried.
-  state = applyAction(state, { type: "togglePower", index: coreIndex });
+  state.run.system.railLevel = 0;
   let tapBudget = 0;
   let simMs = 0;
   while (!isCrashed(state) && simMs < MAX_SIM_MS) {

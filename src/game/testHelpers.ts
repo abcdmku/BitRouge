@@ -72,15 +72,15 @@ export const buildState = (setup: TestBoardSetup = {}): GameState => {
   if (setup.clearBootCore) {
     for (const socket of board.sockets) socket.component = null;
   } else {
-    // The boot CORE ships unpowered (calm boot); most automation tests want it
-    // running, so power it on here. Pass `bootCorePowered: false` to keep the
-    // pristine boot state.
+    // Most custom board tests exercise the zero-generation edge case. Keep
+    // the CPU powered unless a test opts out.
     for (const socket of board.sockets) {
       if (socket.component?.kind === "core") {
         socket.component.powered = setup.bootCorePowered ?? true;
       }
     }
   }
+  run.system.railLevel = setup.railLevel ?? 0;
   if (setup.unlockAll) {
     for (const socket of board.sockets) socket.unlocked = true;
   }
@@ -101,7 +101,6 @@ export const buildState = (setup: TestBoardSetup = {}): GameState => {
   for (const entry of setup.dirs ?? []) {
     board.sockets[toIndex(entry.x, entry.y, board.width)].dir = entry.dir;
   }
-  if (setup.railLevel !== undefined) run.system.railLevel = setup.railLevel;
   if (setup.reserveJ !== undefined) run.system.reserveJ = setup.reserveJ;
   if (setup.credits !== undefined) run.credits = amount(setup.credits);
   if (setup.integrity !== undefined) run.integrity = setup.integrity;

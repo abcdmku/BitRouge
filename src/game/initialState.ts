@@ -36,8 +36,8 @@ export const createInitialMetaState = (): MetaState => ({
 
 /**
  * §2 boot state, respecting owned ARCH perks: 3 unlocked sockets above the
- * PORT (6 with Start Kit), a free powered CORE L1 on top, arrows preset south,
- * 0 J in the reserve (RAIL I with Start Kit).
+ * PORT (6 with Start Kit), a free powered CPU L1 on top, arrows preset south,
+ * and enough PSU capacity to process jobs immediately.
  */
 export const createFreshRun = (meta: MetaState): RunState => {
   const width = BOARD_WIDTH;
@@ -73,19 +73,17 @@ export const createFreshRun = (meta: MetaState): RunState => {
     sockets[extra[2]].dir = "E";
   }
 
-  // The free CORE boots unpowered: with 0 W generation a powered chip would
-  // put the board in brownout at first launch. Manual WORK ignores power, so
-  // the "TAP TO RUN" onboarding is unaffected; buying RAIL I + powering on
-  // starts automation.
+  // The first screen is already an idle game. The CPU and PSU boot online so
+  // jobs move without requiring the player to discover a hidden setup step.
   sockets[coreIndex].component = {
     kind: "core",
     level: 1,
-    powered: false,
+    powered: true,
     faulted: false,
     faultAgeMs: 0,
   };
 
-  const railLevel = hasArchPerk(meta.architecture, "startKit") ? 1 : 0;
+  const railLevel = hasArchPerk(meta.architecture, "startKit") ? 2 : 1;
 
   return {
     uptimeMs: 0,

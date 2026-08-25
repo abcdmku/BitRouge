@@ -10,9 +10,9 @@ import {
 } from "./save";
 import { buildState } from "./testHelpers";
 
-describe("save v4", () => {
-  it("exposes SAVE_VERSION 4", () => {
-    expect(SAVE_VERSION).toBe(4);
+describe("save v5", () => {
+  it("exposes SAVE_VERSION 5", () => {
+    expect(SAVE_VERSION).toBe(5);
   });
 
   it("roundtrips a lived-in state exactly", () => {
@@ -62,7 +62,7 @@ describe("save v4", () => {
     expect(loaded.state.meta.reflows).toBe(0);
   });
 
-  it("fills v4 research and intervention fields on a bare v3 state", () => {
+  it("fills research and intervention fields on a bare v3 state", () => {
     const legacy = createInitialGameState(9) as unknown as {
       meta: { research?: unknown };
       run: { pressureMs?: number; ventCooldownMs?: number; uptimeMs: number };
@@ -75,6 +75,25 @@ describe("save v4", () => {
     expect(loaded.state.meta.research).toEqual({ completed: [], active: null });
     expect(loaded.state.run.pressureMs).toBe(12_000);
     expect(loaded.state.run.ventCooldownMs).toBe(0);
+  });
+
+  it("powers the starting CPU when migrating a v4 zero-rail save", () => {
+    const state = createInitialGameState(10);
+    state.run.system.railLevel = 0;
+    for (const socket of state.run.board.sockets) {
+      if (socket.component) socket.component.powered = false;
+    }
+    const legacy = JSON.parse(serializeSave(state, 100)) as {
+      version: number;
+    };
+    legacy.version = 4;
+
+    const loaded = deserializeSave(JSON.stringify(legacy));
+    expect(loaded.state.run.system.railLevel).toBe(1);
+    expect(
+      loaded.state.run.board.sockets.find((socket) => socket.component?.kind === "core")
+        ?.component?.powered,
+    ).toBe(true);
   });
 
   it("collapses garbage to the initial state", () => {

@@ -1,4 +1,4 @@
-import { amountCompare, type Amount } from "./amount";
+import { amountCompare, amountToSafeNumber, type Amount } from "./amount";
 import {
   countComponents,
   countUnlockedSockets,
@@ -140,8 +140,17 @@ export interface VisibleNodeStatus {
   arrivalLabel: string;
   nextJobLabel: string;
   bufferLabel: string;
+  automationState: "running" | "paused" | "stopped";
+  automationLabel: string;
+  automationDetail: string;
+  goalLabel: string;
+  goalTitle: string;
+  goalDetail: string;
+  goalProgress: number;
   faultCount: number;
   canPulse: boolean;
+  pulseLabel: string;
+  pulseDetail: string;
   canVent: boolean;
   canShed: boolean;
   ventCooldownLabel: string | null;
@@ -548,6 +557,56 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
         : "stable";
   const intervalMs = getArrivalIntervalMs(run.pressureMs, meta.gen);
   const bufferMs = getAutomationBufferMs(state);
+  const hasPoweredCore = run.board.sockets.some(
+    (socket) =>
+      socket.component?.kind === "core" &&
+      socket.component.powered &&
+      !socket.component.faulted,
+  );
+  const automationRunning = !crashed && hasPoweredCore && generationW > 0 && duty > 0;
+  const decodeComplete = meta.research.completed.includes("decodeLogic");
+  const decodeAffordable = amountCompare(run.credits, 3) >= 0;
+  const nextResearch = research.find((row) => row.status === "available") ?? null;
+  const goal = activeResearch
+    ? {
+        label: "R&D ACTIVE",
+        title: researchDefinitions[activeResearch.id].name,
+        detail: `${activeResearch.workDone}/${researchDefinitions[activeResearch.id].workRequired} completed jobs`,
+        progress: Math.min(
+          1,
+          activeResearch.workDone / researchDefinitions[activeResearch.id].workRequired,
+        ),
+      }
+    : !decodeComplete
+      ? {
+          label: "NEXT TARGET",
+          title: decodeAffordable ? "Start Decode Logic" : "Fund Decode Logic",
+          detail: decodeAffordable
+            ? "Open Research and start it for 3 CR"
+            : `${formatAmount(run.credits)}/3 CR · completed jobs pay Credits`,
+          progress: Math.min(1, amountToSafeNumber(run.credits) / 3),
+        }
+      : nextResearch
+        ? {
+            label: "NEXT RESEARCH",
+            title: nextResearch.name,
+            detail: nextResearch.affordable
+              ? `Open Research and start it for ${nextResearch.costLabel}`
+              : `Save ${nextResearch.costLabel} to begin`,
+            progress: nextResearch.affordable ? 1 : 0,
+          }
+        : {
+          label: "RUN TARGET",
+          title: "Keep the queue moving",
+          detail: "Upgrade whichever limit turns amber first",
+          progress: Math.min(1, run.integrity / Math.max(1, hud.integrityMax)),
+          };
+  const pulseAvailable =
+    !crashed &&
+    (faultCount > 0 ||
+      run.board.packets.length > 0 ||
+      (run.backlog.length > 0 &&
+        run.board.sockets.some((socket) => socket.component?.kind === "core")));
   const node: VisibleNodeStatus = {
     condition,
     conditionLabel: condition.toUpperCase(),
@@ -568,13 +627,30 @@ export const deriveVisibleState = (state: GameState): VisibleState => {
       bufferMs <= 0
         ? "Starting Node · foreground only"
         : `${formatDurationMs(bufferMs)} Automation Buffer`,
+    automationState: crashed ? "stopped" : automationRunning ? "running" : "paused",
+    automationLabel: crashed ? "STOPPED" : automationRunning ? "RUNNING" : "PAUSED",
+    automationDetail: automationRunning
+      ? `CPU takes queued jobs automatically at ${hud.dutyLabel} duty`
+      : crashed
+        ? "Reflow the node to restart processing"
+        : !hasPoweredCore
+          ? "Power or repair the CPU to resume processing"
+          : generationW <= 0
+            ? "Add PSU capacity to resume processing"
+            : "Raise available power to resume processing",
+    goalLabel: goal.label,
+    goalTitle: goal.title,
+    goalDetail: goal.detail,
+    goalProgress: goal.progress,
     faultCount,
-    canPulse:
-      !crashed &&
-      (faultCount > 0 ||
-        run.board.packets.length > 0 ||
-        (run.backlog.length > 0 &&
-          run.board.sockets.some((socket) => socket.component?.kind === "core"))),
+    canPulse: pulseAvailable,
+    pulseLabel: faultCount > 0 ? "PATCH FAULT" : pulseAvailable ? "RUN TASK NOW" : "QUEUE EMPTY",
+    pulseDetail:
+      faultCount > 0
+        ? "repair the oldest fault"
+        : pulseAvailable
+          ? "finish one waiting job · +50% Credits"
+          : `next job in ${Math.max(0, Math.ceil((intervalMs - run.arrivalAccumMs) / 1000))}s`,
     canVent: !crashed && run.ventCooldownMs <= 0 && maxHeat > 0,
     canShed: !crashed && run.backlog.length > 0,
     ventCooldownLabel:

@@ -37,11 +37,11 @@ describe("reflow and silicon", () => {
     expect(after.run.integrity).toBeGreaterThan(0);
     expect(after.run.credits).toBe("999"); // workshop currency persists
     expect(after.run.backlog).toHaveLength(0);
-    expect(after.run.system.railLevel).toBe(0);
+    expect(after.run.system.railLevel).toBe(1);
     expect(after.meta.totalTasks).toBe(42); // stats persist
   });
 
-  it("fresh runs honor arch perks: startKit grants RAIL I + 6 sockets", () => {
+  it("fresh runs honor arch perks: startKit grants +1 PSU level and 6 sockets", () => {
     const state = createInitialGameState(4);
     const rich = { ...state, meta: { ...state.meta, silicon: 100 } };
     const kitted = applyAction(rich, { type: "buyArch", id: "startKit" });
@@ -50,7 +50,7 @@ describe("reflow and silicon", () => {
       run: { ...kitted.run, integrity: 0, uptimeMs: 60_000 },
     };
     const fresh = applyAction(crashed, { type: "reflow" });
-    expect(fresh.run.system.railLevel).toBe(1);
+    expect(fresh.run.system.railLevel).toBe(2);
     const unlocked = fresh.run.board.sockets.filter((socket) => socket.unlocked);
     expect(unlocked).toHaveLength(7); // 6 sockets + the PORT cell
   });

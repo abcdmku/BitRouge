@@ -13,7 +13,7 @@ describe("advanceGame delta invariance", () => {
     const tenths = advanceBy(start, total, 10);
     expect(halves).toEqual(whole);
     expect(tenths).toEqual(whole);
-    expect(whole.run.backlog.length).toBeGreaterThan(0); // arrivals happened
+    expect(whole.run.tasksDone).toBeGreaterThan(0); // arrivals were processed
     expect(whole.rng).toEqual(tenths.rng);
   });
 

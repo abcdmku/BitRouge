@@ -35,7 +35,7 @@ import {
 } from "./initialState";
 import { normalizeRngState } from "./rng";
 
-export const SAVE_VERSION = 4 as const;
+export const SAVE_VERSION = 5 as const;
 
 export interface SaveEnvelope {
   version: typeof SAVE_VERSION;
@@ -356,6 +356,13 @@ export const deserializeSave = (raw: string | null | undefined): LoadedSave => {
   // Accept both the envelope and a bare state object.
   const envelope = isRecord(parsed.state) ? parsed : { state: parsed };
   const state = normalizeGameState(envelope.state);
+  const sourceVersion = toInt((envelope as Record<string, unknown>).version, 0);
+  if (sourceVersion < SAVE_VERSION && state.run.system.railLevel === 0) {
+    state.run.system.railLevel = 1;
+    for (const socket of state.run.board.sockets) {
+      if (socket.component?.kind === "core") socket.component.powered = true;
+    }
+  }
   return {
     state,
     savedAtMs:

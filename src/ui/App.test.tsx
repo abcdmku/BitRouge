@@ -72,7 +72,8 @@ describe("App", () => {
     expect(container.textContent).toContain("BITROUGE");
     expect(container.textContent).toContain("Starting Node");
     expect(container.textContent).toContain("0/12 jobs waiting");
-    expect(container.textContent).toContain("PROCESS NOW");
+    expect(container.textContent).toContain("AUTO PROCESSINGRUNNING");
+    expect(container.textContent).toContain("QUEUE EMPTY");
     expect(container.textContent).toContain("Hardware");
     expect(container.textContent).toContain("LOCAL SAVE UNAVAILABLE");
   });
@@ -84,7 +85,7 @@ describe("App", () => {
     setState(state);
     act(() => root.render(<App />));
 
-    act(() => findButton(container, "PROCESS NOW")!.click());
+    act(() => findButton(container, "RUN TASK NOW")!.click());
     act(() => findButton(container, "VENT HEAT")!.click());
     act(() => findButton(container, "SHED LOAD")!.click());
 

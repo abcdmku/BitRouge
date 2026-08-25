@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export type TabId = "hardware" | "research" | "evolution";
 
@@ -24,24 +24,35 @@ export interface LayoutProps {
 }
 
 /**
- * §2 one-screen anatomy. Portrait: HUD strip, stage (backlog + board), bottom
- * sheet with BUILD/SYSTEM/ARCH tabs. ≥900px: stage left, sheet right.
+ * Fixed one-screen anatomy. Compact screens swap between the node and three
+ * panels with bottom navigation. Wide screens keep the node and panel side by side.
  * Geometry never moves with game status.
  */
 export function Layout({ header, banner, stage, panels, alerts = {}, tab, onTabChange, initialTab = "hardware" }: LayoutProps) {
   const [ownTab, setOwnTab] = useState<TabId>(initialTab);
+  const [mobileView, setMobileView] = useState<"node" | TabId>("node");
+  const previousControlledTab = useRef(tab);
   const activeTab = tab ?? ownTab;
   const selectTab = (next: TabId) => {
     setOwnTab(next);
+    setMobileView(next);
     onTabChange?.(next);
   };
+
+  useEffect(() => {
+    if (tab !== undefined && tab !== previousControlledTab.current) {
+      setMobileView(tab);
+    }
+    previousControlledTab.current = tab;
+  }, [tab]);
+
   return (
     <div className="app">
       <div>
         {header}
         {banner}
       </div>
-      <div className="app__body">
+      <div className={`app__body app__body--${mobileView}`}>
         <section className="stage" aria-label="Active node">
           {stage}
         </section>
@@ -67,6 +78,26 @@ export function Layout({ header, banner, stage, panels, alerts = {}, tab, onTabC
           </div>
         </aside>
       </div>
+      <nav className="mobile-nav" aria-label="Game views">
+        <button
+          type="button"
+          aria-current={mobileView === "node" ? "page" : undefined}
+          onClick={() => setMobileView("node")}
+        >
+          <span>01</span>Node
+        </button>
+        {TABS.map((item, index) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-current={mobileView === item.id ? "page" : undefined}
+            className={alerts[item.id] ? "is-alert" : ""}
+            onClick={() => selectTab(item.id)}
+          >
+            <span>0{index + 2}</span>{item.label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

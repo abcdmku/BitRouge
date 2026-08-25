@@ -209,17 +209,19 @@ describe("board tick", () => {
     expect(later.run.backlog.length).toBeGreaterThan(1); // arrivals kept coming
   });
 
-  it("boots calm: free CPU unpowered, no brownout, UI auto duty 0", () => {
+  it("boots with the CPU powered and processes jobs without setup", () => {
     const state = createInitialGameState(21);
     const core = state.run.board.sockets[toIndex(2, 3, 5)].component;
     expect(core?.kind).toBe("core");
-    expect(core?.powered).toBe(false);
-    expect(getDuty(state.run, state.meta)).toBe(1); // draw 0 → never brownout
+    expect(core?.powered).toBe(true);
+    expect(state.run.system.railLevel).toBe(1);
+    expect(getDuty(state.run, state.meta)).toBe(1);
     const later = advanceGame(state, 15_000, "foreground").state;
     expect(eventsOfKind(later, "brownout")).toHaveLength(0);
+    expect(later.run.tasksDone).toBeGreaterThan(0);
     const hud = deriveVisibleState(later).hud;
-    expect(hud.duty).toBe(0);
-    expect(hud.maxHeat).toBe(0); // additive HUD field for WS3
+    expect(hud.duty).toBe(1);
+    expect(hud.maxHeat).toBeGreaterThanOrEqual(0);
   });
 
   it("derives a render snapshot with sockets, packets, backlog and fx ring", () => {

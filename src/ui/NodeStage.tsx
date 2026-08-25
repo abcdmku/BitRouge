@@ -74,6 +74,20 @@ export function NodeStage({
         </div>
       </div>
 
+      <div className="operator-guide" aria-label="Node activity and next goal">
+        <div className={`operator-guide__automation is-${node.automationState}`}>
+          <span className="eyebrow">AUTO PROCESSING</span>
+          <strong><i />{node.automationLabel}</strong>
+          <small>{node.automationDetail}</small>
+        </div>
+        <div className="operator-guide__goal">
+          <span className="eyebrow">{node.goalLabel}</span>
+          <strong>{node.goalTitle}</strong>
+          <small>{node.goalDetail}</small>
+          <span className="operator-guide__progress"><i style={{ width: `${node.goalProgress * 100}%` }} /></span>
+        </div>
+      </div>
+
       <div className="nodeview__telemetry">
         <div className="telemetry-block">
           <span>INCOMING</span>
@@ -156,9 +170,9 @@ export function NodeStage({
             <small>{hud.netWattsLabel} net · {hud.reserveLabel}</small>
           </div>
           <div className="support-card">
-            <span>AUTOMATION</span>
+            <span>OFFLINE BUFFER</span>
             <strong>{node.bufferLabel.split(" · ")[0]}</strong>
-            <small>{node.bufferLabel.includes(" · ") ? node.bufferLabel.split(" · ")[1] : "offline work enabled"}</small>
+            <small>{node.bufferLabel.includes(" · ") ? node.bufferLabel.split(" · ")[1] : "research to extend"}</small>
           </div>
         </div>
       </div>
@@ -179,7 +193,7 @@ export function NodeStage({
       <div className="interventions" aria-label="Manual controls">
         <button type="button" className="intervention intervention--primary" disabled={!node.canPulse} onClick={onPulse}>
           <span className="intervention__key">01</span>
-          <span><strong>PROCESS NOW</strong><small>advance one job · no power</small></span>
+          <span><strong>{node.pulseLabel}</strong><small>{node.pulseDetail}</small></span>
         </button>
         <button type="button" className="intervention" disabled={!node.canVent} onClick={onVent}>
           <span className="intervention__key">02</span>

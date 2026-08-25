@@ -31,16 +31,17 @@ There is no dungeon, hero, or arbitrary socket editor in the primary game. The c
 
 The opening should teach the whole game without a tutorial modal.
 
-- The starting CPU has no automatic power.
+- The starting CPU is powered by PSU Capacity I and processes queued jobs automatically at 100% duty.
 - A job arrives every 6 seconds at the first pressure level.
-- PROCESS NOW carries one job through the current route with no power cost and pays a 1.5x manual bonus.
+- RUN TASK NOW is an optional intervention. It carries one waiting job through the current route with no power cost and pays a 1.5x manual bonus.
 - A brand-new save cannot take backlog-overflow damage until its first completed job. The player can safely inspect the screen.
-- Two manual jobs pay enough to begin Decode Logic.
-- Eight base manual jobs pay enough for PSU Capacity I. Starting Decode Logic first moves that milestone to ten jobs. PSU I powers the installed CPU and starts automation.
+- Three automatic base jobs pay enough to begin Decode Logic.
+- The first screen states whether automatic processing is running and gives one explicit next target with progress.
+- The next PSU purchase is Capacity II. It raises the power budget for additional hardware.
 - VENT HEAT removes 25 heat and has an 8 second hardware cooldown.
 - SHED LOAD discards the three oldest queued jobs to protect integrity.
 
-The player should understand the immediate objective from the first screen: keep the queue moving, buy the PSU, and keep the node alive.
+The player should understand the immediate objective from the first screen: let the CPU earn 3 Credits, begin Decode Logic, and upgrade the first bottleneck that turns amber.
 
 ## Workload and failure
 
@@ -78,7 +79,7 @@ System upgrades:
 
 | System | First cost | Growth | Effect |
 |---|---:|---:|---|
-| PSU Capacity | 12 CR | discrete rail curve | Adds 6 W generation per level. |
+| PSU Capacity II | 50 CR | doubles after Capacity II | Adds 6 W generation per level. The node starts at Capacity I. |
 | Power Reserve | 40 CR | 1.9x | Stores 1.6x more energy per level. |
 | CPU Clock | 30 CR | 1.8x | Shortens each hardware cycle. Tier boundaries require research. |
 
@@ -127,7 +128,7 @@ Within Hz, kHz, and MHz, the display rate begins at 1.0 and grows by 1.5x per le
 
 ## Automation and offline play
 
-Automation must be earned.
+Foreground task processing is automatic from boot. Offline simulation time must be earned through scheduler research.
 
 | Tier | Offline cap | Capability |
 |---|---:|---|
@@ -155,7 +156,7 @@ floor(uptimeMinutes ^ 1.8 / 40) + floor(completedJobs / 200)
 
 Longer runs are disproportionately valuable. This creates the central decision: Reflow safely now, or hold the node together for a better permanent payout.
 
-Architecture purchases include starting power, more integrity, more job value, larger reserve, a larger board, additional output, dual rails, and Gen 2 to Gen 4 workload unlocks.
+Architecture purchases include one extra starting PSU level, more integrity, more job value, larger reserve, a larger board, additional output, dual rails, and Gen 2 to Gen 4 workload unlocks.
 
 ## Interface
 
@@ -165,7 +166,7 @@ Desktop uses a stable two-column screen:
 - left: active node, queue, installed modules, moving job bus, active R&D, and three interventions;
 - right: Hardware, Research, and Evolution tabs.
 
-Mobile stacks the node over the tab panel. Controls never move because of runtime state. Status changes update color, labels, meters, and progress in place.
+Mobile keeps the same fixed viewport and provides four stable views: Node, Hardware, Research, and Evolution. The bottom navigation swaps views instead of stacking them into a page. Only the active panel may scroll. Controls never move because of runtime state. Status changes update color, labels, meters, and progress in place.
 
 The visual language is a dark compute console with warm amber actions, cool cyan telemetry, compact cards, and restrained pixel art. Pixel sprites support the machine instead of turning the entire interface into a low-resolution mock terminal.
 
