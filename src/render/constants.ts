@@ -1,36 +1,35 @@
 /** Renderer-only constants. No game rules live here. */
 export const TILE = 16;
-export const VIEW_TILES_W = 12;
-export const VIEW_TILES_H = 9;
-export const VIEW_W = TILE * VIEW_TILES_W; // 192
-export const VIEW_H = TILE * VIEW_TILES_H; // 144
+
+/** Board grid: 5 columns always; up to 8 rows once the Board 5x8 ARCH perk is bought. */
+export const BOARD_COLS = 5;
+export const BOARD_ROWS_MAX = 8;
+export const VIEW_W = TILE * BOARD_COLS; // 80
+export const VIEW_H = TILE * BOARD_ROWS_MAX; // 128
 export const BG_COLOR = "#07080f";
 
-/** Fog overlay alpha per visibility state. */
-export const FOG_UNEXPLORED = 1;
-export const FOG_REMEMBERED = 0.6;
-export const FOG_VISIBLE = 0;
-
-/** Draw order buckets; entities add their y on top of ENTITY. */
+/** Draw order buckets. Heat washes over the chip/arrow/lock content and its fault glitch. */
 export const DEPTH = {
-  floor: 0,
-  wall: 1,
-  hazard: 2,
-  item: 3,
-  entity: 10,
-  fog: 10_000,
+  board: 0,
+  socket: 3,
+  fault: 4,
+  heatOverlay: 5,
+  packet: 10,
   fx: 20_000,
 } as const;
 
-export const MOVE_TWEEN_MAX_MS = 120;
-export const MOVE_TWEEN_FRACTION = 0.8;
+export const PACKET_TWEEN_FRACTION = 0.85;
+
+/** Packet hop tween duration: always <= the effective tick so hops never overlap. */
+export function packetTweenMs(effectiveTickMs: number): number {
+  return Math.max(0, effectiveTickMs * PACKET_TWEEN_FRACTION);
+}
+
+/** Minimum logical hit target side, in board pixels at 1x (spec: >= 44px logical -> CSS px via zoom). */
+export const MIN_HIT_PX = 44;
+
+/** Long-press duration before a tap resolves to `openPopover` instead of a work/rotate/unlock tap. */
+export const LONG_PRESS_MS = 450;
 
 /** Texture keys. */
-export const TEX_PACK_0X72 = "pack0x72";
-export const TEX_KENNEY_1BIT = "kenney1bit";
-export const TEX_TILESET = "tileset";
 export const TEX_GEN = "gen";
-
-export function moveTweenMs(msPerTurn: number): number {
-  return Math.max(0, Math.min(msPerTurn * MOVE_TWEEN_FRACTION, MOVE_TWEEN_MAX_MS));
-}

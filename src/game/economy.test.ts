@@ -1,102 +1,130 @@
-import { amount, amountCompare } from "./amount";
-import { applyAction } from "./actions";
-import { buyHardware, buyResearch, computeBankedData, getKillCredits } from "./economy";
-import { getHardwareCost, getMsPerTurn } from "./hardware";
-import { deriveHeroStats } from "./hero";
-import { createInitialGameState, createInitialHubState } from "./initialState";
-import { researchDefinitions } from "./research";
-import { endRun } from "./run";
-import type { GameState } from "./types";
+import { describe, expect, it } from "vitest";
+import { amountToNumber } from "./amount";
+import {
+  getArrivalIntervalMs,
+  getBacklogCap,
+  getCacheMultiplier,
+  getCapacitorCost,
+  getClockCost,
+  getComponentCost,
+  getCoreMultiplier,
+  getEffectiveTickMs,
+  getGenerationW,
+  getGenFromArchitecture,
+  getGpuMultiplier,
+  getMaxIntegrity,
+  getRailCost,
+  getReserveMaxJ,
+  getSellRefund,
+  getSiliconPayout,
+  getSocketUnlockCost,
+  getTaskValue,
+  getUpgradeCost,
+  rollTaskKind,
+  TASK_MIX_BY_GEN,
+} from "./economy";
 
-describe("economy", () => {
-  it("hardware costs follow base × growth^n, rounded", () => {
-    expect(getHardwareCost("clock", 0)).toEqual({ credits: "20", data: "0" });
-    expect(getHardwareCost("clock", 1)).toEqual({ credits: "32", data: "0" });
-    expect(getHardwareCost("cache", 2).credits).toBe("97"); // 30 × 1.8² = 97.2
-    expect(getHardwareCost("cores", 1)).toEqual({ credits: "287", data: "3" }); // 140×2.05=287, 2×1.3=2.6
+const n = (value: string) => amountToNumber(value);
+
+describe("economy curves", () => {
+  it("tick: 500 / (1 + 0.25 × clockLevel)", () => {
+    expect(getEffectiveTickMs(0)).toBe(500);
+    expect(getEffectiveTickMs(1)).toBe(400);
+    expect(getEffectiveTickMs(2)).toBeCloseTo(333.333, 2);
   });
 
-  it("buying hardware spends credits and raises the level; unaffordable is a no-op", () => {
-    const hub = { ...createInitialHubState(), credits: amount(100) };
-    const bought = buyHardware(hub, "cache");
-    expect(bought.hardware.cache).toBe(1);
-    expect(bought.credits).toBe("70");
-    const poor = createInitialHubState();
-    expect(buyHardware(poor, "scheduler")).toBe(poor);
+  it("escalation: 6000 × 0.97^U × 0.9^(gen-1)", () => {
+    expect(getArrivalIntervalMs(0, 1)).toBe(6000);
+    expect(getArrivalIntervalMs(60_000, 1)).toBeCloseTo(6000 * 0.97, 6);
+    expect(getArrivalIntervalMs(10 * 60_000, 1)).toBeCloseTo(6000 * Math.pow(0.97, 10), 5);
+    expect(getArrivalIntervalMs(0, 2)).toBeCloseTo(5400, 6);
+    expect(getArrivalIntervalMs(0, 4)).toBeCloseTo(6000 * Math.pow(0.9, 3), 6);
   });
 
-  it("research costs Data and unlocks derived effects", () => {
-    const hub = { ...createInitialHubState(), data: amount(25) };
-    const withBounty = buyResearch(hub, "bugBounty");
-    expect(withBounty.data).toBe("5");
-    expect(withBounty.research.completed).toEqual(["bugBounty"]);
-    expect(buyResearch(withBounty, "bugBounty")).toBe(withBounty);
-    // v2: bugBounty is "Piecework Rates" — +25% work payouts, kills pay flat
-    expect(deriveHeroStats(withBounty).workPayoutMultiplier).toBe("1.25");
-    expect(deriveHeroStats(withBounty).killCreditMultiplier).toBe("1");
-    expect(researchDefinitions).toHaveLength(18);
+  it("task value: 1.05^U with kind multipliers and +20% arch stacks", () => {
+    expect(n(getTaskValue(0, "bulk", []))).toBe(1);
+    expect(n(getTaskValue(0, "crunch", []))).toBe(3);
+    expect(n(getTaskValue(0, "hot", []))).toBe(2);
+    expect(n(getTaskValue(0, "priority", []))).toBe(5);
+    expect(n(getTaskValue(10 * 60_000, "bulk", []))).toBeCloseTo(
+      Math.round(Math.pow(1.05, 10) * 10) / 10,
+      6,
+    );
+    expect(n(getTaskValue(0, "bulk", ["baseValue20", "baseValue20"]))).toBeCloseTo(1.4, 6);
   });
 
-  it("derived stats match the plan table", () => {
-    const stats = deriveHeroStats(createInitialHubState());
-    expect(stats.clockHz).toBeCloseTo(2.3, 10);
-    expect(stats.attack).toBe(1);
-    expect(stats.maxHp).toBe(8);
-    expect(stats.heatDissipation).toBe(1);
-    expect(stats.powerBudget).toBeCloseTo(10 / 1.7, 10);
-    // v2 latency: msPerTurn = 1000 × cycles(tier) / clockHz (2 / 5 / 12 / 8)
-    expect(getMsPerTurn(2.3, 1)).toBeCloseTo(2000 / 2.3, 2);
-    expect(getMsPerTurn(2.3, 5)).toBeCloseTo(5000 / 2.3, 2);
-    expect(getMsPerTurn(2.3, 9)).toBeCloseTo(12000 / 2.3, 2);
-    expect(getMsPerTurn(2.3, 13)).toBeCloseTo(8000 / 2.3, 2);
+  it("gen mixes sum to 1 and gate kinds by generation", () => {
+    for (const gen of [1, 2, 3, 4]) {
+      const mix = TASK_MIX_BY_GEN[gen];
+      expect(mix.bulk + mix.crunch + mix.hot + mix.priority).toBeCloseTo(1, 9);
+    }
+    expect(rollTaskKind(1, 0.99)).toBe("bulk");
+    expect(rollTaskKind(2, 0.8)).toBe("crunch");
+    expect(rollTaskKind(3, 0.9)).toBe("hot");
+    expect(rollTaskKind(4, 0.95)).toBe("priority");
   });
 
-  it("kill credits scale 1 × 1.15^(d-1) exactly (kills pay pocket change)", () => {
-    expect(getKillCredits(1)).toBe("1");
-    expect(getKillCredits(3)).toBe("1.3225");
-    expect(getKillCredits(1, "20")).toBe("20"); // boss bounty multiplier path
+  it("component costs: base × growth^(owned-1), boot core free", () => {
+    expect(n(getComponentCost("core", 1))).toBe(15); // second core
+    expect(n(getComponentCost("core", 2))).toBe(45);
+    expect(n(getComponentCost("cache", 0))).toBe(40);
+    expect(n(getComponentCost("cache", 1))).toBe(76);
+    expect(n(getComponentCost("cooler", 0))).toBe(25);
+    expect(n(getComponentCost("miner", 0))).toBe(100);
+    expect(n(getComponentCost("gpu", 0))).toBe(500);
   });
 
-  it("banks Data = dataMined + 5 × new depths (credit conversion removed)", () => {
-    expect(computeBankedData(7, 2)).toBe("17");
-    expect(computeBankedData(0, 0)).toBe("0");
+  it("upgrade cost 0.6× base × 1.15^(level-1); sell refunds 50%", () => {
+    expect(n(getUpgradeCost("core", 1))).toBe(9);
+    expect(n(getUpgradeCost("core", 2))).toBeCloseTo(10.4, 6);
+    expect(n(getSellRefund("cache", 1, 1, false))).toBe(20);
+    expect(n(getSellRefund("cache", 1, 1, true))).toBe(40);
+    expect(n(getSellRefund("cache", 1, 2, false))).toBe(32); // + upgrade 24 / 2
   });
 
-  it("ending a run banks into the hub, updates stats, and arms the watchdog reboot", () => {
-    let state: GameState = applyAction(createInitialGameState(1), { type: "deploy" });
-    state = { ...state, run: { ...state.run!, credits: amount(55), kills: 4, dataMined: 6, maxDepthReached: 2 } };
-    const ended = endRun(state, "test");
-    expect(ended.run).toBeNull();
-    expect(ended.hub.credits).toBe("65");
-    expect(ended.hub.data).toBe("16"); // dataMined 6 + 2 new depths × 5
-    expect(ended.hub.stats).toEqual({
-      runs: 1,
-      maxDepth: 2,
-      totalKills: 4,
-      lifetimeCredits: "55",
-      deadlocksSurvived: 0,
-      bossKills: 0,
-      offlineRuns: 0,
-      sitesCompleted: 0,
-      dataMined: 6,
-      payloadsDelivered: 0,
-      leaksCollected: 0,
-    });
-    expect(ended.hub.rebootRemainingBits).toBeNull();
-    expect(ended.hub.lastRunSummary?.newMaxDepth).toBe(true);
-
-    const armed = endRun({ ...state, watchdog: { ...state.watchdog, ownedLevelId: "watchdogTimer" } }, "test");
-    expect(armed.hub.rebootRemainingBits).toBe(16);
-    expect(amountCompare(armed.hub.credits, 65)).toBe(0);
+  it("multipliers: core ×2 per level, cache/gpu +25% per level", () => {
+    expect(getCoreMultiplier(1)).toBe(1);
+    expect(getCoreMultiplier(3)).toBe(4);
+    expect(getCacheMultiplier(1)).toBe(2);
+    expect(getCacheMultiplier(2)).toBe(2.5);
+    expect(getGpuMultiplier(1)).toBe(4);
+    expect(getGpuMultiplier(2)).toBe(5);
   });
 
-  it("purchaseWatchdog requires research and credits, in order", () => {
-    let state = createInitialGameState(2);
-    expect(applyAction(state, { type: "purchaseWatchdog" })).toBe(state);
-    state = { ...state, hub: { ...state.hub, credits: amount(100), research: { completed: ["watchdogTimer"] } } };
-    const bought = applyAction(state, { type: "purchaseWatchdog" });
-    expect(bought.watchdog.ownedLevelId).toBe("watchdogTimer");
-    expect(bought.hub.credits).toBe("50");
-    expect(applyAction(bought, { type: "purchaseWatchdog" })).toBe(bought);
+  it("socket unlock 4 × 1.35^(n-3), rails 12 then 50×2^(n-2)", () => {
+    expect(n(getSocketUnlockCost(3))).toBe(4);
+    expect(n(getSocketUnlockCost(4))).toBeCloseTo(5.4, 6);
+    expect(n(getRailCost(1))).toBe(12);
+    expect(n(getRailCost(2))).toBe(50);
+    expect(n(getRailCost(3))).toBe(100);
+    expect(n(getCapacitorCost(1))).toBe(40);
+    expect(n(getCapacitorCost(2))).toBe(76);
+    expect(n(getClockCost(1))).toBe(30);
+    expect(n(getClockCost(2))).toBe(54);
+  });
+
+  it("power: 6 W per rail (×2 dual rail), reserve 100 × 1.6^cap × 1.5^perk", () => {
+    expect(getGenerationW(0, [])).toBe(0);
+    expect(getGenerationW(2, [])).toBe(12);
+    expect(getGenerationW(2, ["dualRail"])).toBe(24);
+    expect(getReserveMaxJ(0, [])).toBe(100);
+    expect(getReserveMaxJ(1, [])).toBeCloseTo(160, 6);
+    expect(getReserveMaxJ(1, ["reserve150"])).toBeCloseTo(240, 6);
+  });
+
+  it("silicon payout is superlinear: two 20-min runs ≈ 10 Si, one 40-min ≈ 19 Si", () => {
+    expect(getSiliconPayout(20 * 60_000, 0)).toBe(5);
+    expect(getSiliconPayout(40 * 60_000, 0)).toBe(19);
+    expect(getSiliconPayout(40 * 60_000, 450)).toBe(21); // + floor(450/200)
+    expect(getSiliconPayout(12 * 60_000, 0)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("gen, backlog cap and max integrity derive from architecture", () => {
+    expect(getGenFromArchitecture([])).toBe(1);
+    expect(getGenFromArchitecture(["gen2", "gen3"])).toBe(3);
+    expect(getBacklogCap([])).toBe(12);
+    expect(getBacklogCap(["eastPort"])).toBe(16);
+    expect(getMaxIntegrity([])).toBe(100);
+    expect(getMaxIntegrity(["integrity25"])).toBe(125);
   });
 });

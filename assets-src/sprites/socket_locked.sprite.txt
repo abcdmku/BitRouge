@@ -1,0 +1,45 @@
+# socket_locked — dim, unpowered socket bezel with a padlock glyph; the
+# unlock cost is printed by BoardScene over the dark area below the lock.
+# The keyhole LED blinks red like hazard_brownout's warning pixel.
+name: socket_locked
+size: 16x16
+palette: bitrouge-20
+anim: flicker 0,1 fps=3 loop
+
+# 0: LED on
+frame 0
+________________
+__KKKKKKKKKKKK__
+_KBBBBBBBBBBbBK_
+_KBKKKKKKKKKKBK_
+_KBKNNNNNNNNKBK_
+_KBKN_SSSS_NKBK_
+_KBKN_S__S_NKBK_
+_KBKNSSSSSSNKBK_
+_KBKNSbRbbSNKBK_
+_KBKNSbbbbSNKBK_
+_KBKNSSSSSSNKBK_
+_KBKNNNNNNNNKBK_
+_KBKKKKKKKKKKBK_
+_KbbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 1: LED off
+frame 1
+________________
+__KKKKKKKKKKKK__
+_KBBBBBBBBBBbBK_
+_KBKKKKKKKKKKBK_
+_KBKNNNNNNNNKBK_
+_KBKN_SSSS_NKBK_
+_KBKN_S__S_NKBK_
+_KBKNSSSSSSNKBK_
+_KBKNSbbbbSNKBK_
+_KBKNSbbbbSNKBK_
+_KBKNSSSSSSNKBK_
+_KBKNNNNNNNNKBK_
+_KBKKKKKKKKKKBK_
+_KbbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________

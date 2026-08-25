@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { RenderEntity, RunEvent } from "../game/renderSnapshot";
 import { diffEntities, moved, selectNewEvents } from "./diff";
 
-function ent(id: number, x = 0, y = 0): RenderEntity {
-  return { id, kind: "bitFlip", x, y, hp: 3, maxHp: 3, facing: "r", anim: "idle" };
+interface Fixture {
+  id: number;
+  x: number;
+  y: number;
+}
+
+function ent(id: number, x = 0, y = 0): Fixture {
+  return { id, x, y };
 }
 
 describe("diffEntities", () => {
@@ -23,10 +28,24 @@ describe("diffEntities", () => {
     expect(diffEntities([], [ent(1)]).added).toHaveLength(1);
     expect(diffEntities([ent(1)], []).removed).toEqual([1]);
   });
+
+  it("diffs packets by id, same shape a socket packet list would use", () => {
+    interface Packet {
+      id: number;
+      socketIndex: number;
+      value: string;
+    }
+    const prev: Packet[] = [{ id: 1, socketIndex: 0, value: "1" }];
+    const next: Packet[] = [{ id: 1, socketIndex: 1, value: "1" }, { id: 2, socketIndex: 0, value: "1" }];
+    const d = diffEntities(prev, next);
+    expect(d.added.map((p) => p.id)).toEqual([2]);
+    expect(d.updated[0]?.prev.socketIndex).toBe(0);
+    expect(d.updated[0]?.next.socketIndex).toBe(1);
+  });
 });
 
 describe("selectNewEvents", () => {
-  const ev = (seq: number): RunEvent => ({ seq, turn: seq, kind: "heroWait" as never } as RunEvent);
+  const ev = (seq: number) => ({ seq, kind: "tick" as const });
 
   it("returns only events after lastSeq, sorted, and advances lastSeq", () => {
     const events = [ev(5), ev(3), ev(7), ev(6)];

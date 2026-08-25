@@ -1,0 +1,45 @@
+# chip_gpu — large amber die in its socket bezel. Fills the whole die area
+# (bulkier than chip_core's ring) to read as the biggest chip on the board;
+# pulses dim to white-hot like chip_core (§3: x4 value per pass, +20 heat).
+name: chip_gpu
+size: 16x16
+palette: bitrouge-20
+anim: pulse 0,1 fps=2 loop
+
+# 0: dim
+frame 0
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNAAAAAANKbK_
+_KsKNAaaaaANKbK_
+_KsKNAaBBaANKbK_
+_KsKNAaBBaANKbK_
+_KsKNAaaaaANKbK_
+_KsKNAAAAAANKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 1: bright peak
+frame 1
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNaaaaaaNKbK_
+_KsKNawwwwaNKbK_
+_KsKNawBBwaNKbK_
+_KsKNawBBwaNKbK_
+_KsKNawwwwaNKbK_
+_KsKNaaaaaaNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________

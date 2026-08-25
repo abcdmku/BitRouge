@@ -1,5 +1,90 @@
 {
   "sprites": {
+    "chip_cache": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "scan": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 3,
+          "loop": true
+        }
+      }
+    },
+    "chip_cooler": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "spin": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 6,
+          "loop": true
+        }
+      }
+    },
+    "chip_core": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "pulse": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 2,
+          "loop": true
+        }
+      }
+    },
+    "chip_gpu": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "pulse": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 2,
+          "loop": true
+        }
+      }
+    },
+    "chip_miner": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "glint": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 3,
+          "loop": true
+        }
+      }
+    },
     "fx_bolt": {
       "size": {
         "w": 16,
@@ -170,6 +255,23 @@
         }
       }
     },
+    "socket_locked": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "flicker": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 3,
+          "loop": true
+        }
+      }
+    },
     "tile_corrupt": {
       "size": {
         "w": 16,
@@ -253,6 +355,23 @@
       },
       "frames": 1,
       "anims": {}
+    },
+    "trace_arrow": {
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "frames": 2,
+      "anims": {
+        "flow": {
+          "frames": [
+            0,
+            1
+          ],
+          "fps": 4,
+          "loop": true
+        }
+      }
     }
   },
   "palette": {

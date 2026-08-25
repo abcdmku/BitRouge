@@ -41,6 +41,10 @@ export function useGamePersistence({
   const [state, setState] = useState<GameState>(() => createInitialGameState());
   const [hydrated, setHydrated] = useState(false);
   const [lastReport, setLastReport] = useState<AdvanceReport | null>(null);
+  // Offline reports get their own slot: `lastReport` is overwritten by every
+  // foreground advance (~10 ms), so the return dialog reads this instead and
+  // it only clears on explicit dismissal.
+  const [offlineReport, setOfflineReport] = useState<AdvanceReport | null>(null);
   const [saveDriver] = useState(() => bitRougePersistence.driver);
 
   const stateRef = useRef(state);
@@ -148,6 +152,7 @@ export function useGamePersistence({
 
         hydratedState = outcome.state;
         setLastReport(outcome.report);
+        setOfflineReport(outcome.report);
         catchupActiveRef.current = false;
       }
 
@@ -262,6 +267,7 @@ export function useGamePersistence({
     }
 
     setLastReport(outcome.report);
+    setOfflineReport(outcome.report);
     const saveTimestamp = now();
     const cleared = applyAction(outcome.state, {
       type: "recordSave",
@@ -299,11 +305,15 @@ export function useGamePersistence({
 
   const visible = useMemo(() => deriveVisibleState(state), [state]);
 
+  const dismissOfflineReport = useCallback(() => setOfflineReport(null), []);
+
   return {
     state,
     visible,
     dispatch,
     lastReport,
+    offlineReport,
+    dismissOfflineReport,
     saveDriver,
     hydrated,
   };

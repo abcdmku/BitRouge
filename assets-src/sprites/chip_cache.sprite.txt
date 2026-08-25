@@ -1,0 +1,45 @@
+# chip_cache — RAM chip in its socket bezel. Horizontal memory banks (green)
+# separated by dark gaps; one bank brightens per frame like a scan sweeping
+# the rows, reading as "data passing through" (§3: x2 value per pass).
+name: chip_cache
+size: 16x16
+palette: bitrouge-20
+anim: scan 0,1 fps=3 loop
+
+# 0: idle banks
+frame 0
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNGGGGGGNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNgggggGNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNGGGGGGNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 1: scan line bright
+frame 1
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNGGGGGGNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNwwwwwgNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNGGGGGGNKbK_
+_KsKNBBBBBBNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________

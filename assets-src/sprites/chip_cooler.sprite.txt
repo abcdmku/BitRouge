@@ -1,0 +1,45 @@
+# chip_cooler — grey heatsink fan in its socket bezel. Blades alternate
+# between an X and a + cross each frame; at spin speed it reads as a
+# spinning fan (§3: -12 heat/s to self + 4 neighbors).
+name: chip_cooler
+size: 16x16
+palette: bitrouge-20
+anim: spin 0,1 fps=6 loop
+
+# 0: X blades
+frame 0
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNs____sNKbK_
+_KsKN_s__s_NKbK_
+_KsKN__BB__NKbK_
+_KsKN__BB__NKbK_
+_KsKN_s__s_NKbK_
+_KsKNs____sNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 1: + blades
+frame 1
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKN__SS__NKbK_
+_KsKN__ss__NKbK_
+_KsKNssBBssNKbK_
+_KsKNssBBssNKbK_
+_KsKN__ss__NKbK_
+_KsKN__SS__NKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________

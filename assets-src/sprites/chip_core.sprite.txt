@@ -1,0 +1,45 @@
+# chip_core — CPU die in its socket bezel. Cyan ring die that pulses from a
+# dim ring (frame 0) to a bright white-hot core (frame 1) once per second;
+# BoardScene plays this loop only while the socket is powered.
+name: chip_core
+size: 16x16
+palette: bitrouge-20
+anim: pulse 0,1 fps=2 loop
+
+# 0: dim
+frame 0
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNCCCCCCNKbK_
+_KsKNCbbbbCNKbK_
+_KsKNCbCCbCNKbK_
+_KsKNCbCCbCNKbK_
+_KsKNCbbbbCNKbK_
+_KsKNCCCCCCNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 1: bright peak
+frame 1
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKNccccccNKbK_
+_KsKNcbbbbcNKbK_
+_KsKNcbwwbcNKbK_
+_KsKNcbwwbcNKbK_
+_KsKNcbbbbcNKbK_
+_KsKNccccccNKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________

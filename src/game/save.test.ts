@@ -1,116 +1,108 @@
-import { advanceGame } from "./advance";
+import { describe, expect, it } from "vitest";
 import { applyAction } from "./actions";
+import { advanceGame } from "./advance";
 import { createInitialGameState } from "./initialState";
-import { deserializeSave, normalizeGameState, SAVE_VERSION, serializeSave } from "./save";
+import {
+  deserializeSave,
+  normalizeGameState,
+  SAVE_VERSION,
+  serializeSave,
+} from "./save";
+import { buildState } from "./testHelpers";
 
-describe("save", () => {
-  it("round-trips a hub-only state", () => {
-    let state = createInitialGameState(42);
-    state = { ...state, hub: { ...state.hub, credits: "1234.5" as typeof state.hub.credits, hardware: { ...state.hub.hardware, ram: 3 } } };
-    state = applyAction(state, { type: "recordSave", timestampMs: 5_000 });
-    const raw = serializeSave(state, 5_000);
-    const parsed = JSON.parse(raw) as { version: number; savedAtMs: number; departedAtMs: number | null };
-    expect(parsed.version).toBe(SAVE_VERSION);
-    expect(parsed.savedAtMs).toBe(5_000);
-    expect(parsed.departedAtMs).toBeNull();
-    const loaded = deserializeSave(raw);
-    expect(loaded.state).toEqual(state);
-    expect(loaded.savedAtMs).toBe(5_000);
+describe("save v3", () => {
+  it("exposes SAVE_VERSION 3", () => {
+    expect(SAVE_VERSION).toBe(3);
   });
 
-  it("round-trips mid-run, including the event ring, rng and cached paths", () => {
-    let state = applyAction(createInitialGameState(7), { type: "deploy" });
-    state = advanceGame(state, 20_000, "foreground").state;
-    expect(state.run).not.toBeNull();
-    state = applyAction(state, { type: "recordDeparture", timestampMs: 9_000 });
-    const loaded = deserializeSave(serializeSave(state, 9_000));
+  it("roundtrips a lived-in state exactly", () => {
+    let state = buildState({
+      seed: 77,
+      railLevel: 2,
+      reserveJ: 42.5,
+      credits: 123.4,
+      chips: [{ x: 1, y: 5, kind: "cache" }],
+    });
+    state = advanceGame(state, 90_000, "foreground").state;
+    state = applyAction(state, { type: "recordSave", timestampMs: 1_700_000_000_000 });
+    const raw = serializeSave(state, 1_700_000_000_000);
+    const loaded = deserializeSave(raw);
     expect(loaded.state).toEqual(state);
-    expect(loaded.departedAtMs).toBe(9_000);
-    // the restored state advances identically
-    const a = advanceGame(state, 5_000, "foreground").state;
-    const b = advanceGame(loaded.state, 5_000, "foreground").state;
-    expect(b).toEqual(a);
+    expect(loaded.savedAtMs).toBe(1_700_000_000_000);
+    expect(loaded.departedAtMs).toBeNull();
+  });
+
+  it("keeps envelope departure metadata", () => {
+    const departed = applyAction(createInitialGameState(5), {
+      type: "recordDeparture",
+      timestampMs: 999,
+    });
+    const loaded = deserializeSave(serializeSave(departed, 1_000));
+    expect(loaded.departedAtMs).toBe(999);
+  });
+
+  it("migrates v1/v2 saves: Silicon = floor(sqrt(credits)/10), fresh run", () => {
+    const legacy = JSON.stringify({
+      version: 2,
+      savedAtMs: 123,
+      departedAtMs: null,
+      state: {
+        version: 2,
+        hub: { credits: "40000", data: "500", hardware: {}, research: { completed: [] } },
+        run: null,
+        time: { lastSavedAtMs: 123, departedAtMs: null },
+      },
+    });
+    const loaded = deserializeSave(legacy);
+    expect(loaded.state.meta.silicon).toBe(20); // floor(200 / 10)
+    expect(loaded.state.run.uptimeMs).toBe(0);
+    expect(loaded.state.run.board.sockets).toHaveLength(35);
+    expect(loaded.state.meta.reflows).toBe(0);
+  });
+
+  it("accepts a bare v3 state object without an envelope", () => {
+    const state = createInitialGameState(9);
+    const loaded = deserializeSave(JSON.stringify(state));
+    expect(loaded.state).toEqual(state);
   });
 
   it("collapses garbage to the initial state", () => {
-    const initial = createInitialGameState();
-    for (const raw of [null, undefined, "", "not json", "42", "[]", "{}", JSON.stringify({ version: 1, state: 5 })]) {
-      const loaded = deserializeSave(raw);
-      expect(loaded.state).toEqual(initial);
-      expect(loaded.savedAtMs).toBeNull();
-    }
+    const fallback = createInitialGameState();
+    expect(deserializeSave("not json{{{").state).toEqual(fallback);
+    expect(deserializeSave("").state).toEqual(fallback);
+    expect(deserializeSave(null).state).toEqual(fallback);
+    expect(deserializeSave(JSON.stringify({ hello: 1 })).state).toEqual(fallback);
+    expect(deserializeSave(JSON.stringify([1, 2, 3])).state).toEqual(fallback);
   });
 
-  it("migrates v1 saves: banks any live run into the hub and zeroes it (SAVE_VERSION 2)", () => {
-    expect(SAVE_VERSION).toBe(2);
-    // build a real v2 state with a live run, then disguise it as a v1 save
-    let state = applyAction(createInitialGameState(11), { type: "deploy" });
-    state = advanceGame(state, 20_000, "foreground").state;
-    expect(state.run).not.toBeNull();
-    const activeRun = state.run!;
-    const live = {
-      ...state,
-      run: {
-        ...activeRun,
-        credits: "37" as typeof activeRun.credits,
-        salvageData: 2,
-        dataMined: 0,
-        kills: 3,
-        maxDepthReached: 2,
-      },
+  it("clamps hostile fields instead of crashing", () => {
+    const state = createInitialGameState(11);
+    const hostile = JSON.parse(serializeSave(state, 50)) as Record<string, unknown>;
+    const mutated = hostile.state as Record<string, unknown>;
+    (mutated.run as Record<string, unknown>).integrity = 5000;
+    (mutated.run as Record<string, unknown>).credits = "-999";
+    (mutated.meta as Record<string, unknown>).silicon = -5;
+    const loaded = deserializeSave(JSON.stringify(hostile));
+    expect(loaded.state.run.integrity).toBeLessThanOrEqual(100);
+    expect(loaded.state.run.credits).toBe("0");
+    expect(loaded.state.meta.silicon).toBe(0);
+  });
+
+  it("normalizeGameState collapses non-record garbage", () => {
+    expect(normalizeGameState(42)).toEqual(createInitialGameState());
+    expect(normalizeGameState(undefined)).toEqual(createInitialGameState());
+  });
+
+  it("drops duplicate packets sharing a socket during normalization", () => {
+    const state = createInitialGameState(13);
+    const raw = JSON.parse(serializeSave(state, 1)) as {
+      state: { run: { board: { packets: unknown[] } } };
     };
-    const v1 = JSON.parse(JSON.stringify({ ...live, version: 1 })) as Record<string, unknown>;
-    const migrated = normalizeGameState(v1);
-    expect(migrated.version).toBe(2);
-    expect(migrated.run).toBeNull(); // live run banked and zeroed
-    // banked with v1 semantics: floor(37/10) + salvage 2 + 5 × 2 new depths = 15
-    expect(migrated.hub.credits).toBe("47"); // starting 10 + 37
-    expect(migrated.hub.data).toBe("15");
-    expect(migrated.hub.stats.runs).toBe(1);
-    expect(migrated.hub.stats.totalKills).toBe(3);
-    expect(migrated.hub.stats.maxDepth).toBe(2);
-    expect(migrated.hub.stats.lifetimeCredits).toBe("37");
-    // hub-only v1 saves map 1:1
-    const hubOnly = normalizeGameState({ ...JSON.parse(JSON.stringify(createInitialGameState(12))), version: 1 });
-    expect(hubOnly.run).toBeNull();
-    expect(hubOnly.hub.credits).toBe("10");
-    expect(hubOnly.hub.stats.runs).toBe(0);
-  });
-
-  it("v2 saves keep a live run (no migration)", () => {
-    let state = applyAction(createInitialGameState(13), { type: "deploy" });
-    state = advanceGame(state, 20_000, "foreground").state;
-    expect(state.run).not.toBeNull();
-    const loaded = deserializeSave(serializeSave(state, 1_000));
-    expect(loaded.state.run).not.toBeNull();
-  });
-
-  it("clamps and normalizes corrupt fields instead of throwing", () => {
-    const state = normalizeGameState({
-      hub: {
-        credits: "-50",
-        data: "abc",
-        hardware: { clock: 99999, ram: -3, bogus: 4 },
-        research: { completed: ["bugBounty", "nope", "bugBounty"] },
-        stats: { runs: -1 },
-        rebootRemainingBits: "x",
-      },
-      run: { floor: { width: 2, height: 2, tiles: [1, 1, 1] } },
-      rng: { algorithm: "wrong" },
-      watchdog: { ownedLevelId: "bogus", offlineProcessedMs: -5 },
-      time: { lastSavedAtMs: "z", departedAtMs: 12 },
-    });
-    expect(state.hub.credits).toBe("0");
-    expect(state.hub.data).toBe("0");
-    expect(state.hub.hardware.clock).toBe(60);
-    expect(state.hub.hardware.ram).toBe(0);
-    expect(state.hub.research.completed).toEqual(["bugBounty"]);
-    expect(state.hub.stats.runs).toBe(0);
-    expect(state.hub.rebootRemainingBits).toBeNull();
-    expect(state.run).toBeNull();
-    expect(state.rng.algorithm).toBe("xoshiro128**");
-    expect(state.watchdog.ownedLevelId).toBe("none");
-    expect(state.watchdog.offlineProcessedMs).toBe(0);
-    expect(state.time).toEqual({ lastSavedAtMs: null, departedAtMs: 12 });
+    raw.state.run.board.packets = [
+      { id: 1, taskKind: "bulk", socketIndex: 3, value: "2", visitedMask: 0, hops: 0 },
+      { id: 2, taskKind: "bulk", socketIndex: 3, value: "2", visitedMask: 0, hops: 0 },
+    ];
+    const loaded = deserializeSave(JSON.stringify(raw));
+    expect(loaded.state.run.board.packets).toHaveLength(1);
   });
 });

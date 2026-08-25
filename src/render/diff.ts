@@ -1,5 +1,3 @@
-import type { RenderEntity, RenderItem, RunEvent } from "../game/renderSnapshot";
-
 export interface EntityDiff<T> {
   added: T[];
   removed: number[];
@@ -32,18 +30,17 @@ export function diffEntities<T extends HasId>(prev: readonly T[], next: readonly
   return { added, removed, updated };
 }
 
-export type EntityListDiff = EntityDiff<RenderEntity>;
-export type ItemListDiff = EntityDiff<RenderItem>;
+interface HasSeq {
+  seq: number;
+}
 
 /**
  * Events with `seq > lastSeq`, ascending. Returns the new lastSeq so callers
- * stay idempotent across remounts and dropped frames.
+ * stay idempotent across remounts and dropped frames. Generic over the fx/
+ * event shape so this stays decoupled from any one snapshot contract.
  */
-export function selectNewEvents(
-  events: readonly RunEvent[],
-  lastSeq: number,
-): { events: RunEvent[]; lastSeq: number } {
-  const fresh: RunEvent[] = [];
+export function selectNewEvents<E extends HasSeq>(events: readonly E[], lastSeq: number): { events: E[]; lastSeq: number } {
+  const fresh: E[] = [];
   let max = lastSeq;
   for (const ev of events) {
     if (ev.seq > lastSeq) {

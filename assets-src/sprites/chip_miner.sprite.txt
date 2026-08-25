@@ -1,0 +1,45 @@
+# chip_miner — purple crystal-drill chip in its socket bezel. A faceted gem
+# with a specular glint that shifts facet between frames, reading as a slow
+# rotating crystal drill (§3: terminal chip, Data = floor(value/4)).
+name: chip_miner
+size: 16x16
+palette: bitrouge-20
+anim: glint 0,1 fps=3 loop
+
+# 0: glint centre
+frame 0
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKN__PP__NKbK_
+_KsKN_PmmP_NKbK_
+_KsKNPmwwmPNKbK_
+_KsKNPmwwmPNKbK_
+_KsKN_PmmP_NKbK_
+_KsKN__PP__NKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________
+
+# 1: glint top facet
+frame 1
+________________
+__KKKKKKKKKKKK__
+_KssssssssssSbK_
+_KsKKKKKKKKKKbK_
+_KsKNNNNNNNNKbK_
+_KsKN__Pw__NKbK_
+_KsKN_PmmP_NKbK_
+_KsKNPmmmmPNKbK_
+_KsKNPmwmmPNKbK_
+_KsKN_PmmP_NKbK_
+_KsKN__PP__NKbK_
+_KsKNNNNNNNNKbK_
+_KsKKKKKKKKKKbK_
+_KSbbbbbbbbbbbK_
+__KKKKKKKKKKKK__
+________________

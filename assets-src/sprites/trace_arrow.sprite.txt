@@ -1,0 +1,47 @@
+# trace_arrow — single directional glyph drawn over a trace tile. Authored
+# pointing east (0 degrees); BoardScene rotates the sprite per socket dir
+# (n/e/s/w) rather than shipping four frames. No bezel/outline silhouette —
+# it floats over tile_floor_cable, so only the glyph itself is opaque.
+# 2-frame pulse: the tip brightens to suggest data flowing toward it.
+name: trace_arrow
+size: 16x16
+palette: bitrouge-20
+anim: flow 0,1 fps=4 loop
+
+# 0: dim tip
+frame 0
+________________
+________________
+________________
+________________
+________________
+________________
+______K_________
+______KC________
+______KCcw______
+______KC________
+______K_________
+________________
+________________
+________________
+________________
+________________
+
+# 1: bright tip
+frame 1
+________________
+________________
+________________
+________________
+________________
+________________
+______K_________
+______Kc________
+______Kcww______
+______Kc________
+______K_________
+________________
+________________
+________________
+________________
+________________
